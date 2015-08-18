@@ -1,0 +1,31 @@
+\documentclass[11pt,twocolumn]{article}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{bibentry}
+\usepackage{cite}
+\usepackage{float}
+\usepackage[margin=1in]{geometry}
+\usepackage{tikz}
+\usepackage[section]{placeins}
+
+\floatstyle{boxed}
+\restylefloat{figure}
+
+\usetikzlibrary{arrows,backgrounds,decorations.pathmorphing,positioning}
+
+\newcommand{\comment}[1]{}
+
+\title{Canary}
+
+\begin{document}
+\maketitle
+
+\section{First Section}
+Some text
+
+% No bibliography, change if/when citations are added
+\bibliographystyle{alpha}
+\nocite*{}
+\nobibliography{bib/main}
+\end{document}
+
