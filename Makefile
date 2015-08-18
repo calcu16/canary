@@ -33,7 +33,7 @@ SRC         = src/$*.c
 NAME        = $*
 
 # Compile LaTeX
-TEX := python bin/pylatex
+TEX := python bin/pylatex.py
 
 PAPERS	:= $(patsubst tex/%,%,$(wildcard tex/*))
 PDFS    := $(PAPERS:%=build/docs/%.pdf)
