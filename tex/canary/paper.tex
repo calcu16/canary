@@ -50,6 +50,117 @@ If $h_k$ was assigned to vertex $g \in G$, and then reassigned, then no future a
 \subsection{Minimal Path Length}
 If a path has connected vertices $g_i, g_k$ then the path should also contain the edge $g_i, g_k$.
 
+\subsection{Minimal Path Length on Path Starts}
+This can be extended to starting vertices, if vertex $g_j$ is assigned to $h_j$,
+  and connected to $g_k$ which is on a path from $h_j$ to $h_k$.
+Then the path should contain an edge from $g_j$ to $h_i$.
+
+\subsection{Retroactive Minimal Path Length}
+Furthermore if $g_j$ is not assigned to $h_j$, but instead may either be assigned to $h_j$ or $h_k$,
+  then it follows that if $g_k$ is not connected to something assigned to $h_j$ then $g_j$ must be assigned to $h_k$.
+Otherwise the previous optimization would be violated.
+
+\begin{figure}[h]
+\begin{tikzpicture}
+  [
+   node distance=5mm and 12mm,
+   rn/.style={circle,thick,draw=red,inner sep=0pt,minimum size=6mm},
+   gn/.style={circle,thick,draw=green,inner sep=0pt,minimum size=6mm},
+   bn/.style={circle,thick,draw=blue,inner sep=0pt,minimum size=6mm},
+   yn/.style={circle,thick,draw=yellow,inner sep=0pt,minimum size=6mm},
+   cn/.style={circle,thick,draw=cyan,inner sep=0pt,minimum size=6mm},
+   mn/.style={circle,thick,draw=magenta,inner sep=0pt,minimum size=6mm}
+  ]
+   \node[bn] (n1)               {1};
+   \node[mn] (n6) [above right=of n1] {6};
+   \node[cn] (n7) [below right=of n1] {7};
+   \node[mn] (n4) [right=of n6] {4};
+   \node[cn] (n5) [right=of n7] {5};
+   \node[rn] (n2) [right=of n4] {2};
+   \node[gn] (n3) [right=of n5] {3};
+
+   \draw[-,color=magenta] (n1) -- (n6);
+   \draw[-,color=magenta] (n6) -- (n4);
+   \draw[-,color=magenta] (n4) -- (n2);
+   \draw[-,color=cyan] (n1) -- (n7);
+   \draw[-,color=cyan] (n7) -- (n5);
+   \draw[-,color=cyan] (n5) -- (n3);
+   \draw[-] (n4) -- (n5);
+
+\end{tikzpicture}
+\caption{\label{fig:min path 3.1}Retroactive Minimal Path Length}
+\end{figure}
+In Figure \ref{fig:min path 3.1} nodes 1, 2, and 3 are all inital assignments for 3 different vertices in the minor.
+ There is a path created between 1 and 2 as shown in magenta through vertices 6 and 4.
+ Both vertices may be assigned to either 4 or 6.
+ Similarly there is a path between 1 and 3 as shown in cyan through vertices 7 and 5.
+\begin{figure}[h]
+\begin{tikzpicture}
+  [
+   node distance=5mm and 12mm,
+   n/.style={circle,thick,draw=black,inner sep=0pt,minimum size=6mm},
+   rn/.style={circle,thick,draw=red,inner sep=0pt,minimum size=6mm},
+   gn/.style={circle,thick,draw=green,inner sep=0pt,minimum size=6mm},
+   bn/.style={circle,thick,draw=blue,inner sep=0pt,minimum size=6mm},
+   yn/.style={circle,thick,draw=yellow,inner sep=0pt,minimum size=6mm},
+   cn/.style={circle,thick,draw=cyan,inner sep=0pt,minimum size=6mm},
+   mn/.style={circle,thick,draw=magenta,inner sep=0pt,minimum size=6mm}
+  ]
+   \node[bn] (n1)               {1};
+   \node[bn] (n6) [above right=of n1] {6};
+   \node[n] (n7) [below right=of n1] {7};
+   \node[bn] (n4) [right=of n6] {4};
+   \node[cn] (n5) [right=of n7] {5};
+   \node[rn] (n2) [right=of n4] {2};
+   \node[gn] (n3) [right=of n5] {3};
+
+   \draw[-,color=blue] (n1) -- (n6);
+   \draw[-,color=blue] (n6) -- (n4);
+   \draw[-,color=magenta] (n4) -- (n2);
+   \draw[-] (n1) -- (n7);
+   \draw[-] (n7) -- (n5);
+   \draw[-,color=cyan] (n5) -- (n3);
+   \draw[-,color=cyan] (n4) -- (n5);
+
+\end{tikzpicture}
+\caption{\label{fig:min path 3.2}Assigning 4 to vertex 1}
+\end{figure}
+In Figure \ref{fig:min path 3.2} we see that if we were to assign 4 to vertex 1,
+  that there would be a more minimal path from 1 to 3 which does not need to use vertex 7.
+
+\begin{figure}[h]
+\begin{tikzpicture}
+  [
+   node distance=5mm and 12mm,
+   rn/.style={circle,thick,draw=red,inner sep=0pt,minimum size=6mm},
+   gn/.style={circle,thick,draw=green,inner sep=0pt,minimum size=6mm},
+   bn/.style={circle,thick,draw=blue,inner sep=0pt,minimum size=6mm},
+   yn/.style={circle,thick,draw=yellow,inner sep=0pt,minimum size=6mm},
+   cn/.style={circle,thick,draw=cyan,inner sep=0pt,minimum size=6mm},
+   mn/.style={circle,thick,draw=magenta,inner sep=0pt,minimum size=6mm}
+  ]
+   \node[bn] (n1)               {1};
+   \node[mn] (n6) [above right=of n1] {6};
+   \node[cn] (n7) [below right=of n1] {7};
+   \node[rn] (n4) [right=of n6] {4};
+   \node[gn] (n5) [right=of n7] {5};
+   \node[rn] (n2) [right=of n4] {2};
+   \node[gn] (n3) [right=of n5] {3};
+
+   \draw[-,color=magenta] (n1) -- (n6);
+   \draw[-,color=magenta] (n6) -- (n4);
+   \draw[-,color=red] (n4) -- (n2);
+   \draw[-,color=cyan] (n1) -- (n7);
+   \draw[-,color=cyan] (n7) -- (n5);
+   \draw[-,color=green] (n5) -- (n3);
+   \draw[-] (n4) -- (n5);
+
+\end{tikzpicture}
+\caption{\label{fig:min path 3.3}Implied Assignments}
+\end{figure}
+Therefore in the original position we must assign 4 to vertex 2, and likewise 5 is assigned vertex 3 as shown in Figure \ref{fig:min path 3.3}.
+
+
 % No bibliography, change if/when citations are added
 \bibliographystyle{alpha}
 \nocite*{}
