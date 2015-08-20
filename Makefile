@@ -40,7 +40,7 @@ PDFS    := $(PAPERS:%=build/docs/%.pdf)
 BIB     := bib/main.bib
 
 PAPER_SRC  = tex/$(basename $(@F))
-PAPER_SRCS = $(wildcard $(SRC)/*)
+PAPER_SRCS = $(wildcard $(PAPER_SRC)/*)
 
 all: docs targets
 

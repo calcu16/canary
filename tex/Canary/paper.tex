@@ -20,8 +20,35 @@
 \begin{document}
 \maketitle
 
-\section{First Section}
-Some text
+\section{Problem Statement}
+Determine whether a graph $G$ has a minor isomorphic to $H$. 
+
+\section{General Algorithm}
+Start by considering all vertices in $G$ as unassigned.
+Go through each vertex $h_k \in H$ and assign it to a vertex in $G$.
+Then for each previously assigned vertex $h_j \in H$ that has an edge between $h_j$ and $h_k$ find a path in $G$ that:
+\begin{enumerate}
+\item Starts at a vertex connected to a vertex assigned to $h_j$
+\item Continues through vertices that may be assigned to $h_j$
+\item Then through vertices that are unassigned
+\item Then through vertices that may be assigned to $h_k$
+\item Finally ends at a vertex connected to $h_k$
+\end{enumerate}
+The middle steps may contain $0$ vertices.
+
+All vertices on the path that may be assigned to $h_j$ are then assigned to $h_j$,
+  likewise all vertices on the path that may be assigned to $h_i$ are then assigned to $h_i$.
+All unassigned vertices on the path may in the future be assigned to $h_j$ or to $h_i$.
+
+Repeat until either the vertices and edges in $H$ are exhausted, or until no path is possible.
+If no path is possible backtrack, trying a diffrent path or vertex assignment until all paths and assignments have been tried.
+
+\section{Optimizations}
+We can apply diffrent optimizations to speed up computation.
+\subsection{Minimal Initial Assignment}
+If $h_k$ was assigned to vertex $g \in G$, and then reassigned, then no future assignment need assign $g$ to $h_k$.
+\subsection{Minimal Path Length}
+If a path has connected vertices $g_i, g_k$ then the path should also contain the edge $g_i, g_k$.
 
 % No bibliography, change if/when citations are added
 \bibliographystyle{alpha}
