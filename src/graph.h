@@ -10,15 +10,12 @@ struct graph {
   struct bitset m[MAX_VERTICES];
 };
 
-inline static
-void
+inline static void
 graph_add_edge(struct graph * g, int i, int j, char v) {
   g->m[i] = bitset_add(g->m[i], j, !!v);
-  g->m[j] = bitset_add(g->m[j], i, !!v);
 }
 
-inline static
-char
+inline static char
 graph_has_edge(struct graph * g, int i, int j) {
   return bitset_get(g->m[i], j);
 }

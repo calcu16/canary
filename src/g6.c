@@ -6,7 +6,7 @@
 
 void
 atog(const char g6[], struct graph * g) {
-  int i, j, k, x;
+  int i, j, k, x, v;
 
   memset(g, 0, sizeof(*g));
 
@@ -33,21 +33,24 @@ atog(const char g6[], struct graph * g) {
         k = 6;
         x = *(g6++) - BIAS6;
       }
-      graph_add_edge(g, i, j, x >> 5);
-      graph_add_edge(g, j, i, x >> 5);
+      v = (x >> 5) & 1;
+      graph_add_edge(g, i, j, v);
+      graph_add_edge(g, j, i, v);
       x <<= 1;
     }
   }
 }
 
 void
-printg(struct graph * g) {
+print_adjacency_list(struct graph * g) {
   int i, j;
-  printf("graph of size %d\n", g->n);
   for (i = 0; i < g->n; ++i) {
+    printf("  %d :", i);
     for (j = 0; j < g->n; ++j) {
-      printf("%d ", graph_has_edge(g, i, j));
+      if (graph_has_edge(g, i, j)) {
+        printf(" %d", j);
+      }
     }
-    printf("\n");
+    printf(";\n");
   }
 }

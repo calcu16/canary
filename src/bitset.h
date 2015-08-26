@@ -7,51 +7,48 @@ struct bitset {
   uint64_t v;
 };
 
-inline static
-struct bitset
+inline static struct bitset
 bitset_empty() {
   return (struct bitset) { 0 };
 }
 
-inline static
-struct bitset
+inline static struct bitset
 bitset_all() {
   return (struct bitset) { -1 };
 }
 
-inline static
-struct bitset
-bitset_single(int i) {
-  return (struct bitset) { 1ULL << i };
+inline static struct bitset
+bitset_single_value(int i, uint64_t v) {
+  return (struct bitset) { !!v << i };
 }
 
-inline static
-struct bitset
+inline static struct bitset
+bitset_single(int i) {
+  return bitset_single_value(i, 1);
+}
+
+inline static struct bitset
 bitset_or(struct bitset l, struct bitset r) {
   return (struct bitset) { l.v | r.v };
 }
 
-inline static
-struct bitset
+inline static struct bitset
 bitset_and(struct bitset l, struct bitset r) {
   return (struct bitset) { l.v & r.v };
 }
 
-inline static
-char
+inline static char
 bitset_isempty(struct bitset s) {
   return !s.v;
 }
 
-inline static
-struct bitset
+inline static struct bitset
 bitset_add(struct bitset s, int i, char v) {
-  return bitset_or(s, (struct bitset) { ((uint64_t) !!v) << i});
+  return bitset_or(s, bitset_single_value(i, v));
 }
 
-inline static
-char
+inline static char
 bitset_get(struct bitset s, int i) {
-  return bitset_isempty(bitset_and(s, bitset_single(i)));
+  return !bitset_isempty(bitset_and(s, bitset_single(i)));
 }
 #endif/*_BITSET_H_*/

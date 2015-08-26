@@ -11,6 +11,7 @@ BLD_DIR     = build
 DEP_DIR     = $(BLD_DIR)/dep
 OBJ_DIR     = $(BLD_DIR)/obj
 BIN_DIR	    = $(BLD_DIR)/bin
+TST_DIR     = $(BLD_DIR)/tst
 
 OBJDEP      = $(NAME:%=$(DEP_DIR)/%.od)
 BINDEP      = $(NAME:%=$(DEP_DIR)/%.d)
@@ -32,6 +33,26 @@ DEPENDS    := $(BINDEPS) $(OBJDEPS)
 SRC         = src/$*.c
 NAME        = $*
 
+# Testing binaries
+TESTS      := $(wildcard tst/*)
+RESULTS    := $(TESTS:%=$(BLD_DIR)/%.result)
+PASSES     := $(TESTS:%=$(BLD_DIR)/%.pass)
+FAILS      := $(TESTS:%=$(BLD_DIR)/%.fail)
+ARGVS      := $(wildcard $(TESTS:%=%/*.argv))
+DIFFS      := $(ARGVS:%.argv=$(BLD_DIR)/%.diff)
+OUTS       := $(ARGVS:%.argv=$(BLD_DIR)/%.out)
+
+TEST        = $(basename $(@F))
+TPROG       = $(notdir $(@D))
+TNAME       = $(basename $(@F))
+PASS        = $(TEST:%=$(TST_DIR)/%.pass)
+FAIL        = $(TEST:%=$(TST_DIR)/%.fail)
+DIFF        = $(filter $(TST_DIR)/$(TEST)/%,$(DIFFS))
+OUT         = $(@:%.diff=%.out)
+GOLD_OUT    = $(@:build/%.diff=%.out)
+BIN         = build/bin/$(TPROG)
+ARGV        = tst/$(TPROG)/$(TNAME).argv
+
 # Compile LaTeX
 TEX := python bin/pylatex.py
 
@@ -47,6 +68,10 @@ all: docs targets
 clean:
 	rm -rf build
 
+test: $(RESULTS)
+	@cat $(RESULTS)
+
+.PHONY: all clean test
 .SECONDEXPANSION:
 
 # Building C programs
@@ -76,7 +101,26 @@ $(BIN_DIR)/%:
 	@mkdir -p $(@D)
 	$(CC) -o $@ $(LDFLAGS) $^
 
+# Build tests
+$(RESULTS): $$(PASS) $$(FAIL)
+	@mkdir -p $(@D)
+	wc -l $(PASS) $(FAIL) | sed 's/^[ ]*\([0-9]*\)[ ].*/\1/' | xargs | awk '{printf "%s: %d passed and %d failed\n", "$(TEST)", $$1, $$2}' >$@
 
+$(PASSES): $$(DIFF)
+	@mkdir -p $(@D)
+	wc -l $(DIFF) | sed -n 's/^[ ]*0[ ].*\/\(.*\).diff/\1/p' >$@
+
+$(FAILS): $$(DIFF)
+	@mkdir -p $(@D)
+	wc -l $(DIFF) | sed -n 's/^[ ]*[1-9][0-9]*[ ].*\/\(.*\).diff/\1/p' >$@
+
+$(DIFFS): $$(OUT) $$(GOLD_OUT)
+	@mkdir -p $(@D)
+	-diff $(OUT) $(GOLD_OUT) >$@
+
+$(OUTS): $$(BIN) $$(ARGV)
+	@mkdir -p $(@D)
+	cat $(ARGV) | xargs $(BIN) >$(OUT)
 
 # Building tex files
 docs: $(PDFS)
