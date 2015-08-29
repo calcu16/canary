@@ -12,7 +12,7 @@ struct graph {
 
 inline static void
 graph_add_edge(struct graph * g, int i, int j, char v) {
-  g->m[i] = bitset_add(g->m[i], j, !!v);
+  g->m[i] = bitset_add_value(g->m[i], j, !!v);
 }
 
 inline static char
