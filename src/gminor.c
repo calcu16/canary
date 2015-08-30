@@ -1,8 +1,10 @@
 #include "gminor.h"
 #include <setjmp.h>
+#include <stdio.h>
 #include <string.h>
 #include "bitset.h"
 #include "constants.h"
+#include "debug.h"
 #include "graph.h"
 
 struct context {
@@ -18,18 +20,10 @@ struct context {
   struct bitset unassigned;
   /* vertices that have two assignments */
   struct bitset undecided;
+  /* assignments of vertices in g to a vertex in h (index) or to another */
+  struct bitset half_assigned[MAX_VERTICES];
   /* assignments of vertices in g to a vertex in h (index) */
   struct bitset assigned[MAX_VERTICES];
-
-  /* partial path from hs to he through gv (index) */
-  struct bitset partial_paths[MAX_VERTICES];
-  /* hs */
-  int path_start_vertex[MAX_VERTICES];
-  /* he */
-  int path_end_vertex[MAX_VERTICES];
-
-  /* full path from hs to he */
-  struct bitset full_paths[MAX_VERTICES][MAX_VERTICES];
 
   /* used to longjmp back to the beginning */
   jmp_buf top;
@@ -43,57 +37,59 @@ static void
 end_path(struct context * c, int hs, int he, int gv, char first) {
   int i;
 
-  if (!bitset_get(c->assigned[he], gv)) {
+  if (!bitset_get(c->half_assigned[he], gv) || bitset_get(c->path, gv)) {
     return;
   }
+  if (bitset_get(c->assigned[he], gv)) {
+    c->assigned[hs] = bitset_or(c->assigned[hs], bitset_and(c->half_assigned[hs], c->path));
+    c->assigned[he] = bitset_or(c->assigned[he], bitset_and(c->half_assigned[he], c->path));
+    c->half_assigned[hs] = bitset_or(c->half_assigned[hs], bitset_and(c->unassigned, c->path));
+    c->half_assigned[he] = bitset_or(c->half_assigned[he], bitset_and(c->unassigned, c->path));
+    c->undecided = bitset_or(bitset_minus(c->undecided, c->path), bitset_and(c->unassigned, c->path));
+    c->unassigned = bitset_minus(c->unassigned, c->path);
 
-  if (!bitset_get(c->undecided, gv)) {
     path(c, hs, he + 1);
+
+    c->unassigned = bitset_or(c->unassigned, bitset_and(c->undecided, c->path));
+    c->undecided = bitset_minus(bitset_or(c->undecided, c->path), c->unassigned);
+    c->half_assigned[he] = bitset_minus(c->half_assigned[he], c->unassigned);
+    c->half_assigned[hs] = bitset_minus(c->half_assigned[hs], c->unassigned);
+    c->assigned[he] = bitset_minus(c->assigned[he], c->path);
+    c->assigned[hs] = bitset_minus(c->assigned[hs], c->path);
+    return;
+  }
+  if (!bitset_get(c->undecided, gv)) {
     return;
   }
 
-  c->undecided = bitset_remove(c->undecided, gv);
-  c->assigned[c->path_start_vertex[gv]] = bitset_remove(c->assigned[c->path_start_vertex[gv]], gv);
-  c->assigned[c->path_end_vertex[gv]] = bitset_remove(c->assigned[c->path_end_vertex[gv]], gv);
-  c->assigned[he] = bitset_add(c->assigned[he], gv);
- 
+  c->path = bitset_add(c->path, gv);
   for (i = 0; i < c->g->n; ++i) {
     if (bitset_get(c->g->m[gv], i)) {
       end_path(c, hs, he, i, 0);
     }
   }
-
-  c->assigned[c->path_end_vertex[gv]] = bitset_add(c->assigned[c->path_end_vertex[gv]], gv);
-  c->assigned[c->path_start_vertex[gv]] = bitset_add(c->assigned[c->path_start_vertex[gv]], gv);
-  c->undecided = bitset_add(c->undecided, gv);
+  c->path = bitset_remove(c->path, gv);
 }
 
 static void
 unassigned_path(struct context * c, int hs, int he, int gv, char first) {
   int i;
 
+  if (bitset_get(c->path, gv)) {
+    return;
+  }
   if (!bitset_get(c->unassigned, gv)) {
     end_path(c, hs, he, gv, first);
     return;
   }
 
-  c->unassigned = bitset_remove(c->unassigned, gv);
-  c->undecided = bitset_add(c->undecided, gv);
-  c->assigned[hs] = bitset_add(c->assigned[hs], gv);
-  c->assigned[he] = bitset_add(c->assigned[he], gv);
-  c->path_start_vertex[gv] = hs;
-  c->path_end_vertex[gv] = he;
-
+  c->path = bitset_add(c->path, gv);
   for (i = 0; i < c->g->n; ++i) {
     if (bitset_get(c->g->m[gv], i)) {
       unassigned_path(c, hs, he, i, 0);
     }
   }
-
-  c->assigned[he] = bitset_remove(c->assigned[he], gv);
-  c->assigned[hs] = bitset_remove(c->assigned[hs], gv);
-  c->undecided = bitset_remove(c->undecided, gv);
-  c->unassigned = bitset_add(c->unassigned, gv);
+  c->path = bitset_remove(c->path, gv);
 }
 
 static void
@@ -101,7 +97,10 @@ start_path(struct context * c, int hs, int he, int gv, char first) {
   int i;
   struct bitset old_neighbors;
 
-  if (!bitset_get(c->h->m[hs], gv)) {
+  if (bitset_get(c->path, gv)) {
+    return;
+  }
+  if (!bitset_get(c->half_assigned[hs], gv)) {
     unassigned_path(c, hs, he, gv, first);
     return;
   }
@@ -109,56 +108,74 @@ start_path(struct context * c, int hs, int he, int gv, char first) {
     return;
   }
 
-  c->undecided = bitset_remove(c->undecided, gv);
-  c->assigned[c->path_end_vertex[gv]] = bitset_remove(c->assigned[c->path_end_vertex[gv]], gv);
   old_neighbors = c->neighbors;
   c->neighbors = bitset_or(c->neighbors, c->g->m[gv]);
-
+  c->path = bitset_add(c->path, gv);
   for (i = 0; i < c->g->n; ++i) {
     if (bitset_get(c->g->m[gv], i)) {
       start_path(c, hs, he, i, 0);
     }
   }
-  
+  c->path = bitset_remove(c->path, gv);
   c->neighbors = old_neighbors;
-  c->assigned[c->path_end_vertex[gv]] = bitset_add(c->assigned[c->path_end_vertex[gv]], gv);
-  c->undecided = bitset_add(c->undecided, gv);
 }
 
 static void
 assign(struct context * c, int hv) {
   int i;
+  struct bitset old_neighbors;
   if (hv == c->h->n) {
     _longjmp(c->top, 1);
   }
+  old_neighbors = c->neighbors;
   for (i = 0; i < c->g->n; ++i) {
     if (bitset_get(c->unassigned, i)) {
       c->unassigned = bitset_remove(c->unassigned, i);
+      c->half_assigned[hv] = bitset_add(c->half_assigned[hv], i);
       c->assigned[hv] = bitset_add(c->assigned[hv], i);
       c->neighbors = c->g->m[i];
-
-      path(c, i, 0);
+      
+      path(c, hv, 0);
 
       c->assigned[hv] = bitset_remove(c->assigned[hv], i);
-      c->unassigned = bitset_add(c->assigned[hv], i);
+      c->half_assigned[hv] = bitset_remove(c->half_assigned[hv], i);
+      c->unassigned = bitset_add(c->unassigned, i);
     }
   }
+  c->neighbors = old_neighbors;
 }
 
 static void
 path(struct context * c, int hs, int he) {
   int i; 
+  struct bitset old_path;
 
-  for (;hs < he && !bitset_get(c->h->m[hs], he); ++he) ;
+  for (;he < hs && !bitset_get(c->h->m[hs], he); ++he) ;
   if (hs == he) {
     assign(c, hs + 1);
     return;
   }
-
+  old_path = c->path;
+  c->path = bitset_empty();
   for (i = 0; i < c->g->n; ++i) {
     if (bitset_get(c->neighbors, i)) {
       start_path(c, hs, he, i, 1);
     }
+  }
+  c->path = old_path;
+}
+
+static void
+log_context(struct context * c, enum debug level) {
+  int i;
+  LOGF(level, "graph of size %d, minor of size %d\n", c->g->n, c->h->n);
+  LOGF(level, "unassigned : %llx\n", c->unassigned.v);
+  LOGF(level, "undecided : %llx\n", c->undecided.v);
+  for (i = 0; i < c->h->n; ++i) {
+    LOGF(level, "half assigned to %d: %llx\n", i, c->assigned[i].v);
+  }
+  for (i = 0; i < c->h->n; ++i) {
+    LOGF(level, "assigned to %d: %llx\n", i, c->assigned[i].v);
   }
 }
 
@@ -168,9 +185,12 @@ is_minor(const struct graph * g, const struct graph * h) {
 
   memset(&c, 0, sizeof(c));
   if (_setjmp(c.top)) {
+    log_context(&c, INFO);
     return 1;
   }
   c.unassigned = bitset_all();
+  c.g = g;
+  c.h = h;
   assign(&c, 0);
   return 0;
 }

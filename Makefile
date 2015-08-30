@@ -2,7 +2,7 @@
 # Compiling C code
 SHELL       = /bin/sh
 CC          = clang
-CFLAGS      = -O -g -Wall -pedantic -Wno-variadic-macros -Wno-format -Wno-overlength-strings -Werror
+CFLAGS     := -Ofast -Wall -pedantic -Wno-variadic-macros -Wno-format -Wno-overlength-strings -Werror
 INCLUDE     = -Isrc
 LDFLAGS     =
 
@@ -116,11 +116,11 @@ $(FAILS): $$(DIFF)
 
 $(DIFFS): $$(OUT) $$(GOLD_OUT)
 	@mkdir -p $(@D)
-	-diff $(OUT) $(GOLD_OUT) >$@
+	bin/diff.py $(OUT) $(GOLD_OUT) >$@
 
 $(OUTS): $$(BIN) $$(ARGV)
 	@mkdir -p $(@D)
-	cat $(ARGV) | xargs $(BIN) >$(OUT)
+	cat $(ARGV) | xargs $(BIN) >$@
 
 # Building tex files
 docs: $(PDFS)
