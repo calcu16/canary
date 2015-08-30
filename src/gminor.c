@@ -62,7 +62,7 @@ end_path(struct context * c, int hs, int he, int gv, char first) {
 
   c->path = bitset_add(c->path, gv);
   for (i = 0; i < c->g->n; ++i) {
-    if (bitset_get(c->g->m[gv], i)) {
+    if (bitset_equal(bitset_and(c->g->m[i], c->path), bitset_single(i))) {
       end_path(c, hs, he, i, 0);
     }
   }
@@ -83,7 +83,7 @@ unassigned_path(struct context * c, int hs, int he, int gv, char first) {
 
   c->path = bitset_add(c->path, gv);
   for (i = 0; i < c->g->n; ++i) {
-    if (bitset_get(c->g->m[gv], i)) {
+    if (bitset_equal(bitset_and(c->g->m[i], c->path), bitset_single(i))) {
       unassigned_path(c, hs, he, i, 0);
     }
   }
@@ -106,7 +106,7 @@ start_path(struct context * c, int hs, int he, int gv, char first) {
 
   c->path = bitset_add(c->path, gv);
   for (i = 0; i < c->g->n; ++i) {
-    if (bitset_get(c->g->m[gv], i)) {
+    if (bitset_equal(bitset_and(c->g->m[i], c->path), bitset_single(i))) {
       start_path(c, hs, he, i, 0);
     }
   }

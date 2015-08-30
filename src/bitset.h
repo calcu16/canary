@@ -72,4 +72,9 @@ inline static char
 bitset_get(struct bitset s, int i) {
   return !bitset_isempty(bitset_and(s, bitset_single(i)));
 }
+
+inline static char
+bitset_equal(struct bitset l, struct bitset r) {
+  return l.v == r.v;
+}
 #endif/*_BITSET_H_*/
