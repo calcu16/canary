@@ -18,6 +18,11 @@ bitset_all() {
 }
 
 inline static struct bitset
+bitset_below(struct bitset v) {
+  return (struct bitset) { (-v.v & v.v) - 1 };
+}
+
+inline static struct bitset
 bitset_single_value(int i, uint64_t v) {
   return (struct bitset) { !!v << i };
 }
@@ -61,7 +66,6 @@ inline static struct bitset
 bitset_add_value(struct bitset s, int i, char v) {
   return bitset_or(s, bitset_single_value(i, v));
 }
-
 
 inline static struct bitset
 bitset_remove(struct bitset s, int i) {

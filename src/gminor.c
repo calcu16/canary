@@ -1,4 +1,5 @@
 #include "gminor.h"
+#include <assert.h>
 #include <setjmp.h>
 #include <stdio.h>
 #include <string.h>
@@ -34,11 +35,19 @@ path(struct context * c, int hs, int he);
 static void
 end_path(struct context * c, int hs, int he, int gv, char first) {
   int i;
+#ifndef NDEBUG
+  struct bitset apath, aunassigned, aundecided;
+#endif/*NDEBUG*/
 
   if (!bitset_get(c->half_assigned[he], gv) || bitset_get(c->path, gv)) {
     return;
   }
   if (bitset_get(c->assigned[he], gv)) {
+#ifndef NDEBUG
+    apath = c->path;
+    aunassigned = c->unassigned;
+    aundecided = c->undecided;
+#endif/*NDEBUG*/
     c->assigned[hs] = bitset_or(c->assigned[hs], bitset_and(c->half_assigned[hs], c->path));
     c->assigned[he] = bitset_or(c->assigned[he], bitset_and(c->half_assigned[he], c->path));
     c->half_assigned[hs] = bitset_or(c->half_assigned[hs], bitset_and(c->unassigned, c->path));
@@ -54,6 +63,11 @@ end_path(struct context * c, int hs, int he, int gv, char first) {
     c->half_assigned[hs] = bitset_minus(c->half_assigned[hs], c->unassigned);
     c->assigned[he] = bitset_minus(c->assigned[he], c->path);
     c->assigned[hs] = bitset_minus(c->assigned[hs], c->path);
+#ifndef NDEBUG
+    assert(bitset_equal(apath, c->path));
+    assert(bitset_equal(aunassigned, c->unassigned));
+    assert(bitset_equal(aundecided, c->undecided));
+#endif/*NDEBUG*/
     return;
   }
   if (!bitset_get(c->undecided, gv)) {
@@ -62,7 +76,7 @@ end_path(struct context * c, int hs, int he, int gv, char first) {
 
   c->path = bitset_add(c->path, gv);
   for (i = 0; i < c->g->n; ++i) {
-    if (bitset_equal(bitset_and(c->g->m[i], c->path), bitset_single(i))) {
+    if (bitset_equal(bitset_and(c->g->m[i], c->path), bitset_single(gv))) {
       end_path(c, hs, he, i, 0);
     }
   }
@@ -83,7 +97,7 @@ unassigned_path(struct context * c, int hs, int he, int gv, char first) {
 
   c->path = bitset_add(c->path, gv);
   for (i = 0; i < c->g->n; ++i) {
-    if (bitset_equal(bitset_and(c->g->m[i], c->path), bitset_single(i))) {
+    if (bitset_equal(bitset_and(c->g->m[i], c->path), bitset_single(gv))) {
       unassigned_path(c, hs, he, i, 0);
     }
   }
@@ -106,7 +120,7 @@ start_path(struct context * c, int hs, int he, int gv, char first) {
 
   c->path = bitset_add(c->path, gv);
   for (i = 0; i < c->g->n; ++i) {
-    if (bitset_equal(bitset_and(c->g->m[i], c->path), bitset_single(i))) {
+    if (bitset_equal(bitset_and(c->g->m[i], c->path), bitset_single(gv))) {
       start_path(c, hs, he, i, 0);
     }
   }
@@ -116,6 +130,9 @@ start_path(struct context * c, int hs, int he, int gv, char first) {
 static void
 assign(struct context * c, int hv) {
   int i;
+#ifndef NDEBUG
+  struct bitset aunassigned = c->unassigned, aundecided = c->undecided;
+#endif/*NDEBUG*/
   if (hv == c->h->n) {
     _longjmp(c->top, 1);
   }
@@ -130,6 +147,10 @@ assign(struct context * c, int hv) {
       c->assigned[hv] = bitset_remove(c->assigned[hv], i);
       c->half_assigned[hv] = bitset_remove(c->half_assigned[hv], i);
       c->unassigned = bitset_add(c->unassigned, i);
+#ifndef NDEBUG
+      assert(bitset_equal(aunassigned, c->unassigned));
+      assert(bitset_equal(aundecided, c->undecided));
+#endif/*NDEBUG*/
     }
   }
 }
@@ -177,9 +198,9 @@ is_minor(const struct graph * g, const struct graph * h) {
     log_context(&c, INFO);
     return 1;
   }
-  c.unassigned = bitset_all();
   c.g = g;
   c.h = h;
+  c.unassigned = bitset_below(bitset_single(g->n));
   assign(&c, 0);
   return 0;
 }
