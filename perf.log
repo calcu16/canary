@@ -3,6 +3,8 @@ canary F]rE? -- L]ooOGA?]TEi?~
   2m0.232s + optimization 3.2
   0m3.309s + optimization 3.3
   0m0.137s + most of optimization 3.1
+  0m0.039s + simple automorphisms
 make build/tst/canary/K25.out
   2m34.659s - basic algorithm + optimization 3.{2,3}
   0m9.317s + most of optimization 3.1
+  0m6.354s + simple automorphisms 
