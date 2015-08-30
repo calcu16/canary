@@ -13,8 +13,6 @@ struct context {
 
   /* current traversed path */
   struct bitset path;
-  /* neighbors of the current branch */
-  struct bitset neighbors;
   
   /* vertices that are unassigned */
   struct bitset unassigned;
@@ -95,8 +93,6 @@ unassigned_path(struct context * c, int hs, int he, int gv, char first) {
 static void
 start_path(struct context * c, int hs, int he, int gv, char first) {
   int i;
-  struct bitset old_neighbors;
-
   if (bitset_get(c->path, gv)) {
     return;
   }
@@ -108,8 +104,6 @@ start_path(struct context * c, int hs, int he, int gv, char first) {
     return;
   }
 
-  old_neighbors = c->neighbors;
-  c->neighbors = bitset_or(c->neighbors, c->g->m[gv]);
   c->path = bitset_add(c->path, gv);
   for (i = 0; i < c->g->n; ++i) {
     if (bitset_get(c->g->m[gv], i)) {
@@ -117,23 +111,19 @@ start_path(struct context * c, int hs, int he, int gv, char first) {
     }
   }
   c->path = bitset_remove(c->path, gv);
-  c->neighbors = old_neighbors;
 }
 
 static void
 assign(struct context * c, int hv) {
   int i;
-  struct bitset old_neighbors;
   if (hv == c->h->n) {
     _longjmp(c->top, 1);
   }
-  old_neighbors = c->neighbors;
   for (i = 0; i < c->g->n; ++i) {
     if (bitset_get(c->unassigned, i)) {
       c->unassigned = bitset_remove(c->unassigned, i);
       c->half_assigned[hv] = bitset_add(c->half_assigned[hv], i);
       c->assigned[hv] = bitset_add(c->assigned[hv], i);
-      c->neighbors = c->g->m[i];
       
       path(c, hv, 0);
 
@@ -142,7 +132,6 @@ assign(struct context * c, int hv) {
       c->unassigned = bitset_add(c->unassigned, i);
     }
   }
-  c->neighbors = old_neighbors;
 }
 
 static void
@@ -158,7 +147,7 @@ path(struct context * c, int hs, int he) {
   old_path = c->path;
   c->path = bitset_empty();
   for (i = 0; i < c->g->n; ++i) {
-    if (bitset_get(c->neighbors, i)) {
+    if (!bitset_isempty(bitset_and(c->g->m[i], c->assigned[hs]))) {
       start_path(c, hs, he, i, 1);
     }
   }
