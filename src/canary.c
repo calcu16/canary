@@ -85,6 +85,11 @@ main(int argc, const char *argv[]) {
   }
 
   if (!strcmp(argv[hs], "--any") || !strcmp(argv[hs], "--all")) {
+    if (!strcmp(argv[hs], "--any")) {
+      o = ANY;
+    } else {
+      o = ALL;
+    }
     ++hs;
   }
 
