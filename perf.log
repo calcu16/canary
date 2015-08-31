@@ -11,4 +11,4 @@ make build/tst/canary/K25.out
 make build/tst/canary/planar.out
   0m0.517s - basic algorithm + optimization 3.{most of 1,2,3}  + simple automorphisms
 make build/tst/canary/nearlyPlanar.out
-  0m4.927s - basic algorithm + optimization 3.{most of 1,2,3}  + simple automorphisms
+  0m36.049s - basic algorithm + optimization 3.{most of 1,2,3}  + simple automorphisms + checking for existing trivial path

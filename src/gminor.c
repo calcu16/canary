@@ -142,6 +142,13 @@ path(struct context * c, int hs, int he) {
   old_path = c->path;
   c->path = bitset_empty();
   for (i = 0; i < c->g->n; ++i) {
+    if (!bitset_isempty(bitset_and(c->g->m[i], c->assigned[hs])) && bitset_get(c->assigned[he], i)) {
+      path(c, hs, he + 1);
+      c->path = old_path;
+      return;
+    }
+  }
+  for (i = 0; i < c->g->n; ++i) {
     if (!bitset_isempty(bitset_and(c->g->m[i], c->assigned[hs]))) {
       dfs(c, START, hs, he, i, 1);
     }
