@@ -8,3 +8,7 @@ make build/tst/canary/K25.out
   2m34.659s - basic algorithm + optimization 3.{2,3}
   0m9.317s + most of optimization 3.1
   0m6.354s + simple automorphisms 
+make build/tst/canary/planar.out
+  0m22.794s - basic algorithm + optimization 3.{most of 1,2,3}  + simple automorphisms
+make build/tst/canary/nearlyPlanar.out
+  5m26.599s - basic algorithm + optimization 3.{most of 1,2,3}  + simple automorphisms
