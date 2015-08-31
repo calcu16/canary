@@ -166,10 +166,11 @@ log_context(struct context * c, enum debug level) {
 static void
 simple_automorphisms(const struct graph * g, int results[MAX_VERTICES]) {
   int i, j;
-  for (i = 0; i < MAX_VERTICES; ++i) {
+  for (i = 0; i < g->n; ++i) {
     results[i] = -1;
     for (j = i; j-- > 0; ) {
       if (bitset_equal(bitset_minus(g->m[i], bitset_single(j)), bitset_minus(g->m[j], bitset_single(i)))) {
+        LOGF(DEBUG, "%d is automorphic to %d\n", i, j);
         results[i] = j;
         break;
       }
@@ -189,7 +190,7 @@ is_minor(const struct graph * g, const struct graph * h) {
   c.g = g;
   c.h = h;
   c.unassigned = bitset_below(bitset_single(g->n));
-  simple_automorphisms(g, c.sa);
+  simple_automorphisms(h, c.sa);
   assign(&c, 0);
   return 0;
 }
