@@ -65,6 +65,7 @@ PASSES     := $(TESTS:%=$(BLD_DIR)/%.pass)
 FAILS      := $(TESTS:%=$(BLD_DIR)/%.fail)
 ARGVS      := $(wildcard $(TESTS:%=%/*.argv))
 DIFFS      := $(ARGVS:%.argv=$(BLD_DIR)/%.diff)
+TIMES      := $(ARGVS:%.argv=$(BLD_DIR)/%.time)
 OUTS       := $(ARGVS:%.argv=$(BLD_DIR)/%.out)
 
 TEST        = $(basename $(@F))
@@ -73,7 +74,7 @@ TNAME       = $(basename $(@F))
 PASS        = $(TEST:%=$(TST_DIR)/%.pass)
 FAIL        = $(TEST:%=$(TST_DIR)/%.fail)
 DIFF        = $(filter $(TST_DIR)/$(TEST)/%,$(DIFFS))
-OUT         = $(@:%.diff=%.out)
+OUT         = $(patsubst %.time,%.out,$(@:%.diff=%.out))
 GOLD_OUT    = $(@:build/%.diff=%.out)
 BIN         = build/bin/$(TPROG)
 ARGV        = tst/$(TPROG)/$(TNAME).argv
@@ -97,6 +98,9 @@ debug: dtargets
 
 test: $(RESULTS)
 	@cat $(RESULTS)
+
+time: build/tst/time.txt
+	@cat $^
 
 .PHONY: all clean test
 .SECONDEXPANSION:
@@ -161,6 +165,10 @@ $(RESULTS): $$(PASS) $$(FAIL)
 	@mkdir -p $(@D)
 	wc -l $(PASS) $(FAIL) | sed 's/^[ ]*\([0-9]*\)[ ].*/\1/' | xargs | awk '{printf "%s: %d passed and %d failed\n", "$(TEST)", $$1, $$2}' >$@
 
+build/tst/time.txt: $(TIMES)
+	@mkdir -p $(@D)
+	find $(@D) -name '*.time' | xargs grep . /dev/null | sed 's,.*/\([^/]*\).time:,\1: ,' >$@
+
 $(PASSES): $$(DIFF)
 	@mkdir -p $(@D)
 	wc -l $(DIFF) | sed -n 's/^[ ]*0[ ].*\/\(.*\).diff/\1/p' >$@
@@ -171,11 +179,15 @@ $(FAILS): $$(DIFF)
 
 $(DIFFS): $$(OUT) $$(GOLD_OUT)
 	@mkdir -p $(@D)
-	bin/diff.py $(OUT) $(GOLD_OUT) >$@
+	sed '$$ d' $(OUT) | bin/diff.py - $(GOLD_OUT) >$@
+
+$(TIMES): $$(OUT)
+	@mkdir -p $(@D)
+	tail -n 1 $(OUT) >$@
 
 $(OUTS): $$(BIN) $$(ARGV)
 	@mkdir -p $(@D)
-	cat $(ARGV) | bin/lxargs.py $(BIN) >$@
+	cat $(ARGV) | bin/lxargs.py $(BIN) --time >$@
 
 # Building tex files
 docs: $(PDFS)

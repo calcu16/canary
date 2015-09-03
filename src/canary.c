@@ -60,8 +60,10 @@ static void test_all(const char *gs[], int gl, const char *hs[], int hl, enum op
 
 int
 main(int argc, const char *argv[]) {
+  char t = 0;
   int gs, gl, hs = 1, hl;
   enum option o = NONE;
+  uint64_t start, end, delta;
 
   if (argc == 1) {
     fprintf(stderr, usage, argv[0]);
@@ -84,6 +86,11 @@ main(int argc, const char *argv[]) {
     ++hs;
   }
 
+  if (!strncmp(argv[hs], "--time", strlen("--time"))) {
+    t = 1;
+    ++hs;
+  }
+
   if (!strcmp(argv[hs], "--any") || !strcmp(argv[hs], "--all")) {
     if (!strcmp(argv[hs], "--any")) {
       o = ANY;
@@ -101,6 +108,12 @@ main(int argc, const char *argv[]) {
   gs = hs + hl + 1;
   gl = argc - gs;
 
+  start = microseconds();
   test_all(&argv[gs], gl, &argv[hs], hl, o);
+  end = microseconds();
+  delta = end - start;
+  if (t) {
+    printf("Completed request in %llu.%06llu seconds\n", delta / 1000000, delta % 1000000);
+  }
   return 0;
 }
