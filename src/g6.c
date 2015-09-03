@@ -42,7 +42,7 @@ atog(const char g6[], struct graph * g) {
 }
 
 void
-print_adjacency_list(struct graph * g) {
+print_adjacency_list(const struct graph * g) {
   int i, j;
   for (i = 0; i < g->n; ++i) {
     printf("  %d :", i);

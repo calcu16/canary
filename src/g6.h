@@ -6,5 +6,5 @@ void
 atog(const char g6[], struct graph * g);
 
 void
-print_adjacency_list(struct graph * g);
+print_adjacency_list(const struct graph * g);
 #endif/*_G6_H_*/

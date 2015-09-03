@@ -16,7 +16,7 @@ graph_add_edge(struct graph * g, int i, int j, char v) {
 }
 
 inline static char
-graph_has_edge(struct graph * g, int i, int j) {
+graph_has_edge(const struct graph * g, int i, int j) {
   return bitset_get(g->m[i], j);
 }
 #endif/*_GRAPH_H_*/

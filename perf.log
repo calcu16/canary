@@ -5,14 +5,18 @@ canary F]rE? -- L]ooOGA?]TEi?~
   0m0.137s + most of optimization 3.1
   0m0.020s + simple automorphisms
   0m0.013s + switching to internal time
+  0m0.007s + finishing optimization 3.1
 make build/tst/canary/K25.out
   2m34.659s - basic algorithm + optimization 3.{2,3}
   0m9.317s + most of optimization 3.1
   0m0.988s + simple automorphisms 
   0m0.801s + switching to internal time
+  0m0.576s + finishing optimization 3.1
 make build/tst/canary/planar.out
   0m0.517s - basic algorithm + optimization 3.{most of 1,2,3}  + simple automorphisms
   0m0.424s + switching to internal time
+  0m0.348s + finishing optimization 3.1
 make build/tst/canary/nearlyPlanar.out
   0m36.049s - basic algorithm + optimization 3.{most of 1,2,3}  + simple automorphisms + checking for existing trivial path
   0m36.831s + switching to internal time
+  0m37.491s + finishing optimization 3.1

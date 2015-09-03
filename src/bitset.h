@@ -53,8 +53,18 @@ bitset_minus(struct bitset l, struct bitset r) {
 }
 
 inline static char
+bitset_equal(struct bitset l, struct bitset r) {
+  return l.v == r.v;
+}
+
+inline static char
 bitset_isempty(struct bitset s) {
   return !s.v;
+}
+
+inline static char
+bitset_isall(struct bitset s) {
+  return bitset_equal(s, bitset_all());
 }
 
 inline static struct bitset
@@ -75,10 +85,5 @@ bitset_remove(struct bitset s, int i) {
 inline static char
 bitset_get(struct bitset s, int i) {
   return !bitset_isempty(bitset_and(s, bitset_single(i)));
-}
-
-inline static char
-bitset_equal(struct bitset l, struct bitset r) {
-  return l.v == r.v;
 }
 #endif/*_BITSET_H_*/
