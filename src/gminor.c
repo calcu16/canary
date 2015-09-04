@@ -48,7 +48,7 @@ struct context {
 static void
 path(struct context * c);
 
-static void
+static inline void
 assign_path(struct context * c) {
 #ifndef NDEBUG
   struct bitset apath = c->path, aunassigned = c->unassigned, aundecided = c->undecided;
@@ -77,6 +77,17 @@ assign_path(struct context * c) {
   assert(bitset_equal(aunassigned, c->unassigned));
   assert(bitset_equal(aundecided, c->undecided));
 #endif/*NDEBUG*/
+}
+
+static inline void
+unwind(struct context * c, int gv) {
+  if (bitset_get(c->half_assigned[c->hs], gv)) {
+    c->state = START;
+  } else if(bitset_get(c->unassigned, gv)) {
+    c->state = UNASSIGNED;
+  } else {
+    c->state = END;
+  }
 }
 
 static void
@@ -110,6 +121,7 @@ dfs(struct context * c, int gv) {
   } else {
     for (i = c->initial_assignment[c->he]; i < c->g->n; ++i) {
       if (bitset_equal(bitset_and(c->g->m[i], c->path), bitset_single(gv))) {
+        unwind(c, gv);
         dfs(c, i);
       }
     }
