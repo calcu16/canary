@@ -33,7 +33,7 @@ struct context {
   /* assignments of vertices in g to a vertex in h (index) */
   struct bitset assigned[MAX_VERTICES];
 
-  int initial_assignment[MAX_VERTICES];
+  int initial_assignment[MAX_VERTICES + 1];
 
   int gsa[MAX_VERTICES];
   int hsa[MAX_VERTICES];
@@ -58,12 +58,10 @@ commit_path(struct context * c) {
   c->decided = bitset_and(bitset_minus(c->path, c->start_path), c->unassigned);
   c->undecided = bitset_or(bitset_minus(c->undecided, c->path), bitset_and(c->unassigned, c->path));
   c->unassigned = bitset_minus(c->unassigned, c->path);
-  ++c->he;
 }
 
 static inline void
 uncommit_path(struct context * c) {
-  --c->he;
   c->unassigned = bitset_or(bitset_or(c->unassigned, bitset_and(c->undecided, c->path)), bitset_and(c->path, c->decided));
   c->undecided = bitset_minus(bitset_or(c->undecided, c->path), c->unassigned);
   c->decided = bitset_minus(c->decided, c->path);
@@ -140,10 +138,9 @@ dfs_up:
 
 static void
 assign(struct context * c) {
-  int i, l = c->hsa[c->hs] == -1 ? c->g->n : c->initial_assignment[c->hsa[c->hs]], old_he;
-#ifndef NDEBUG
-  struct bitset aunassigned = c->unassigned, aundecided = c->undecided;
-#endif/*NDEBUG*/
+  int i, l = c->initial_assignment[c->hsa[c->hs + 1]], old_he;
+
+  ++c->hs;
   if (c->hs == c->h->n) {
     _longjmp(c->top, 1);
   }
@@ -154,47 +151,39 @@ assign(struct context * c) {
       c->half_assigned[c->hs] = bitset_add(c->half_assigned[c->hs], i);
       c->assigned[c->hs] = bitset_add(c->assigned[c->hs], i);
       c->initial_assignment[c->hs] = i;
-      c->he = 0;
+      c->he = -1;
       path(c);
 
       c->assigned[c->hs] = bitset_remove(c->assigned[c->hs], i);
       c->half_assigned[c->hs] = bitset_remove(c->half_assigned[c->hs], i);
       c->unassigned = bitset_add(c->unassigned, i);
-#ifndef NDEBUG
-      assert(bitset_equal(aunassigned, c->unassigned));
-      assert(bitset_equal(aundecided, c->undecided));
-#endif/*NDEBUG*/
     }
   }
   c->he = old_he;
+  --c->hs;
 }
 
 static void
 path(struct context * c) {
-  int old_he, old_gv; 
+  int old_gv; 
   struct bitset old_path, old_start_path;
 
-  old_he = c->he;
-  for (;c->he < c->hs && !bitset_get(c->h->m[c->hs], c->he); ++c->he) ;
-  if (c->hs == c->he) {
-    ++c->hs;
-    assign(c);
-    --c->hs;
-    c->he = old_he;
-    return;
-  }
   old_gv = c->gv;
   old_path = c->path;
   old_start_path = c->start_path;
+
+  for (;++c->he < c->hs && !bitset_get(c->h->m[c->hs], c->he); ) ;
+  if (c->hs == c->he) {
+    assign(c);
+    goto path_end;
+  }
   c->path = bitset_empty();
   c->start_path = bitset_all();
   for (c->gv = c->initial_assignment[c->he]; c->gv < c->g->n; ++c->gv) {
     if (!bitset_isempty(bitset_and(c->g->m[c->gv], c->assigned[c->hs]))
         && bitset_get(c->assigned[c->he], c->gv)
         && (c->gsa[c->gv] == -1 || !bitset_get(c->unassigned, c->gsa[c->gv]))) {
-      ++c->he;
       path(c);
-      --c->he;
       goto path_end;
     }
   }
@@ -208,7 +197,7 @@ path_end:
   c->gv = old_gv;
   c->path = old_path;
   c->start_path = old_start_path;
-  c->he = old_he;
+  for ( ; c->he-- > 0 && !bitset_get(c->h->m[c->hs], c->he); ) ;
 }
 
 static void
@@ -229,7 +218,7 @@ static void
 simple_automorphisms(const struct graph * g, int results[MAX_VERTICES]) {
   int i, j;
   for (i = 0; i < g->n; ++i) {
-    results[i] = -1;
+    results[i] = MAX_VERTICES;
     for (j = i; j-- > 0; ) {
       if (bitset_equal(bitset_minus(g->m[i], bitset_single(j)), bitset_minus(g->m[j], bitset_single(i)))) {
         LOGF(DEBUG, "%d is automorphic to %d\n", i, j);
@@ -254,6 +243,8 @@ is_minor(const struct graph * g, const struct graph * h) {
   c.unassigned = bitset_below(bitset_single(g->n));
   simple_automorphisms(g, c.gsa);
   simple_automorphisms(h, c.hsa);
+  c.hs = -1;
+  c.initial_assignment[MAX_VERTICES] = c.g->n;
   assign(&c);
   return 0;
 }
