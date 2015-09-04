@@ -138,25 +138,25 @@ dfs_up:
 
 static void
 assign(struct context * c) {
-  int i, l = c->initial_assignment[c->hsa[c->hs + 1]], old_he;
+  int old_he;
 
   ++c->hs;
   if (c->hs == c->h->n) {
     _longjmp(c->top, 1);
   }
   old_he = c->he;
-  for (i = 0; i < l; ++i) {
-    if (bitset_get(c->unassigned, i)) {
-      c->unassigned = bitset_remove(c->unassigned, i);
-      c->half_assigned[c->hs] = bitset_add(c->half_assigned[c->hs], i);
-      c->assigned[c->hs] = bitset_add(c->assigned[c->hs], i);
-      c->initial_assignment[c->hs] = i;
+  for (c->initial_assignment[c->hs] = 0; c->initial_assignment[c->hs] < c->initial_assignment[c->hsa[c->hs]]; ++c->initial_assignment[c->hs]) {
+    if (bitset_get(c->unassigned, c->initial_assignment[c->hs])) {
+      c->unassigned = bitset_remove(c->unassigned, c->initial_assignment[c->hs]);
+      c->half_assigned[c->hs] = bitset_add(c->half_assigned[c->hs], c->initial_assignment[c->hs]);
+      c->assigned[c->hs] = bitset_add(c->assigned[c->hs], c->initial_assignment[c->hs]);
+      c->initial_assignment[c->hs] = c->initial_assignment[c->hs];
       c->he = -1;
       path(c);
 
-      c->assigned[c->hs] = bitset_remove(c->assigned[c->hs], i);
-      c->half_assigned[c->hs] = bitset_remove(c->half_assigned[c->hs], i);
-      c->unassigned = bitset_add(c->unassigned, i);
+      c->assigned[c->hs] = bitset_remove(c->assigned[c->hs], c->initial_assignment[c->hs]);
+      c->half_assigned[c->hs] = bitset_remove(c->half_assigned[c->hs], c->initial_assignment[c->hs]);
+      c->unassigned = bitset_add(c->unassigned, c->initial_assignment[c->hs]);
     }
   }
   c->he = old_he;
@@ -181,8 +181,7 @@ path(struct context * c) {
   c->start_path = bitset_all();
   for (c->gv = c->initial_assignment[c->he]; c->gv < c->g->n; ++c->gv) {
     if (!bitset_isempty(bitset_and(c->g->m[c->gv], c->assigned[c->hs]))
-        && bitset_get(c->assigned[c->he], c->gv)
-        && (c->gsa[c->gv] == -1 || !bitset_get(c->unassigned, c->gsa[c->gv]))) {
+        && bitset_get(c->assigned[c->he], c->gv)) {
       path(c);
       goto path_end;
     }
