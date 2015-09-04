@@ -8,6 +8,12 @@
 #include "debug.h"
 #include "graph.h"
 
+enum state {
+  START,
+  UNASSIGNED,
+  END
+};
+
 struct context {
   /* a graph and its minor */
   const struct graph *g, *h;
@@ -33,39 +39,39 @@ struct context {
 
   /* used to longjmp back to the beginning */
   jmp_buf top;
-};
 
-enum state {
-  START,
-  UNASSIGNED,
-  END
+  /* variables used in dfs */
+  enum state state;
+  int hs, he;
 };
 
 static void
-path(struct context * c, int hs, int he);
+path(struct context * c);
 
 static void
-assign_path(struct context * c, int hs, int he) {
+assign_path(struct context * c) {
 #ifndef NDEBUG
   struct bitset apath = c->path, aunassigned = c->unassigned, aundecided = c->undecided;
 #endif/*NDEBUG*/
-  c->assigned[hs] = bitset_or(c->assigned[hs], bitset_and(c->half_assigned[hs], c->path));
-  c->assigned[he] = bitset_or(bitset_or(c->assigned[he], bitset_and(c->half_assigned[he], c->path)), bitset_minus(c->path, c->start_path));
-  c->half_assigned[hs] = bitset_or(c->half_assigned[hs], bitset_and(c->unassigned, bitset_and(c->path, c->start_path)));
-  c->half_assigned[he] = bitset_or(c->half_assigned[he], bitset_and(c->unassigned, c->path));
+  c->assigned[c->hs] = bitset_or(c->assigned[c->hs], bitset_and(c->half_assigned[c->hs], c->path));
+  c->assigned[c->he] = bitset_or(bitset_or(c->assigned[c->he], bitset_and(c->half_assigned[c->he], c->path)), bitset_minus(c->path, c->start_path));
+  c->half_assigned[c->hs] = bitset_or(c->half_assigned[c->hs], bitset_and(c->unassigned, bitset_and(c->path, c->start_path)));
+  c->half_assigned[c->he] = bitset_or(c->half_assigned[c->he], bitset_and(c->unassigned, c->path));
   c->decided = bitset_and(bitset_minus(c->path, c->start_path), c->unassigned);
   c->undecided = bitset_or(bitset_minus(c->undecided, c->path), bitset_and(c->unassigned, c->path));
   c->unassigned = bitset_minus(c->unassigned, c->path);
 
-  path(c, hs, he + 1);
+  ++c->he;
+  path(c);
+  --c->he;
 
   c->unassigned = bitset_or(bitset_or(c->unassigned, bitset_and(c->undecided, c->path)), bitset_and(c->path, c->decided));
   c->undecided = bitset_minus(bitset_or(c->undecided, c->path), c->unassigned);
   c->decided = bitset_minus(c->decided, c->path);
-  c->half_assigned[he] = bitset_minus(c->half_assigned[he], c->unassigned);
-  c->half_assigned[hs] = bitset_minus(c->half_assigned[hs], c->unassigned);
-  c->assigned[he] = bitset_minus(c->assigned[he], c->path);
-  c->assigned[hs] = bitset_minus(c->assigned[hs], c->path);
+  c->half_assigned[c->he] = bitset_minus(c->half_assigned[c->he], c->unassigned);
+  c->half_assigned[c->hs] = bitset_minus(c->half_assigned[c->hs], c->unassigned);
+  c->assigned[c->he] = bitset_minus(c->assigned[c->he], c->path);
+  c->assigned[c->hs] = bitset_minus(c->assigned[c->hs], c->path);
 #ifndef NDEBUG
   assert(bitset_equal(apath, c->path));
   assert(bitset_equal(aunassigned, c->unassigned));
@@ -74,34 +80,37 @@ assign_path(struct context * c, int hs, int he) {
 }
 
 static void
-dfs(struct context * c, enum state state, int hs, int he, int gv, char first) {
+dfs(struct context * c, int gv) {
   int i;
-  if (bitset_get(c->path, gv) || (!first && !bitset_isempty(bitset_and(c->g->m[gv], c->assigned[hs])))) {
+  enum state old_state = c->state;
+  if (bitset_get(c->path, gv) || (!bitset_isempty(c->path) && !bitset_isempty(bitset_and(c->g->m[gv], c->assigned[c->hs])))) {
     return;
   }
-  if (state == START && !bitset_get(c->half_assigned[hs], gv)) {
-    state = UNASSIGNED;
+  if (c->state == START && !bitset_get(c->half_assigned[c->hs], gv)) {
+    c->state = UNASSIGNED;
   }
-  if (state == UNASSIGNED && !bitset_get(c->unassigned, gv)) {
-    state = END;
+  if (c->state == UNASSIGNED && !bitset_get(c->unassigned, gv)) {
+    c->state = END;
   }
-  if (state == START && (!bitset_get(c->undecided, gv) ||  gv < c->initial_assignment[hs])) {
+  if (c->state == START && (!bitset_get(c->undecided, gv) ||  gv < c->initial_assignment[c->hs])) {
+    c->state = old_state;
     return;
   }
-  if (state == UNASSIGNED && gv < c->initial_assignment[hs] && bitset_isall(c->start_path)) {
+  if (c->state == UNASSIGNED && gv < c->initial_assignment[c->hs] && bitset_isall(c->start_path)) {
     c->start_path = c->path;
   }
-  if (state == END && (!bitset_get(c->half_assigned[he], gv) || !bitset_get(c->undecided, gv))) {
+  if (c->state == END && (!bitset_get(c->half_assigned[c->he], gv) || !bitset_get(c->undecided, gv))) {
+    c->state = old_state;
     return;
   }
 
   c->path = bitset_add(c->path, gv);
-  if (!bitset_isempty(bitset_and(c->g->m[gv], c->assigned[he]))) {
-    assign_path(c, hs, he);
+  if (!bitset_isempty(bitset_and(c->g->m[gv], c->assigned[c->he]))) {
+    assign_path(c);
   } else {
-    for (i = c->initial_assignment[he]; i < c->g->n; ++i) {
+    for (i = c->initial_assignment[c->he]; i < c->g->n; ++i) {
       if (bitset_equal(bitset_and(c->g->m[i], c->path), bitset_single(gv))) {
-        dfs(c, state, hs, he, i, 0);
+        dfs(c, i);
       }
     }
   }
@@ -109,28 +118,30 @@ dfs(struct context * c, enum state state, int hs, int he, int gv, char first) {
   if (bitset_equal(c->start_path, c->path)) {
     c->start_path = bitset_all();
   }
+  c->state = old_state;
 }
 
 static void
-assign(struct context * c, int hv) {
-  int i, l = c->sa[hv] == -1 ? c->g->n : c->initial_assignment[c->sa[hv]];
+assign(struct context * c) {
+  int i, l = c->sa[c->hs] == -1 ? c->g->n : c->initial_assignment[c->sa[c->hs]], old_he;
 #ifndef NDEBUG
   struct bitset aunassigned = c->unassigned, aundecided = c->undecided;
 #endif/*NDEBUG*/
-  if (hv == c->h->n) {
+  if (c->hs == c->h->n) {
     _longjmp(c->top, 1);
   }
+  old_he = c->he;
+  c->he = 0;
   for (i = 0; i < l; ++i) {
     if (bitset_get(c->unassigned, i)) {
       c->unassigned = bitset_remove(c->unassigned, i);
-      c->half_assigned[hv] = bitset_add(c->half_assigned[hv], i);
-      c->assigned[hv] = bitset_add(c->assigned[hv], i);
-      c->initial_assignment[hv] = i;
-      
-      path(c, hv, 0);
+      c->half_assigned[c->hs] = bitset_add(c->half_assigned[c->hs], i);
+      c->assigned[c->hs] = bitset_add(c->assigned[c->hs], i);
+      c->initial_assignment[c->hs] = i;
+      path(c);
 
-      c->assigned[hv] = bitset_remove(c->assigned[hv], i);
-      c->half_assigned[hv] = bitset_remove(c->half_assigned[hv], i);
+      c->assigned[c->hs] = bitset_remove(c->assigned[c->hs], i);
+      c->half_assigned[c->hs] = bitset_remove(c->half_assigned[c->hs], i);
       c->unassigned = bitset_add(c->unassigned, i);
 #ifndef NDEBUG
       assert(bitset_equal(aunassigned, c->unassigned));
@@ -138,37 +149,51 @@ assign(struct context * c, int hv) {
 #endif/*NDEBUG*/
     }
   }
+  c->he = old_he;
 }
 
 static void
-path(struct context * c, int hs, int he) {
-  int i; 
+path(struct context * c) {
+  int i, old_he; 
   struct bitset old_path, old_start_path;
+  enum state old_state;
 
-  for (;he < hs && !bitset_get(c->h->m[hs], he); ++he) ;
-  if (hs == he) {
-    assign(c, hs + 1);
+  old_he = c->he;
+  for (;c->he < c->hs && !bitset_get(c->h->m[c->hs], c->he); ++c->he) ;
+  if (c->hs == c->he) {
+    ++c->hs;
+    assign(c);
+    --c->hs;
+    c->he = old_he;
     return;
   }
   old_path = c->path;
   old_start_path = c->start_path;
+  old_state = c->state;
   c->path = bitset_empty();
   c->start_path = bitset_all();
-  for (i = c->initial_assignment[he]; i < c->g->n; ++i) {
-    if (!bitset_isempty(bitset_and(c->g->m[i], c->assigned[hs])) && bitset_get(c->assigned[he], i)) {
-      path(c, hs, he + 1);
+  c->state = START;
+  for (i = c->initial_assignment[c->he]; i < c->g->n; ++i) {
+    if (!bitset_isempty(bitset_and(c->g->m[i], c->assigned[c->hs])) && bitset_get(c->assigned[c->he], i)) {
+      ++c->he;
+      path(c);
+      --c->he;
       c->path = old_path;
       c->start_path = old_start_path;
+      c->state = old_state;
+      c->he = old_he;
       return;
     }
   }
-  for (i = c->initial_assignment[he] + 1; i < c->g->n; ++i) {
-    if (!bitset_isempty(bitset_and(c->g->m[i], c->assigned[hs]))) {
-      dfs(c, START, hs, he, i, 1);
+  for (i = c->initial_assignment[c->he] + 1; i < c->g->n; ++i) {
+    if (!bitset_isempty(bitset_and(c->g->m[i], c->assigned[c->hs]))) {
+      dfs(c, i);
     }
   }
   c->path = old_path;
   c->start_path = old_start_path;
+  c->state = old_state;
+  c->he = old_he;
 }
 
 static void
@@ -213,7 +238,7 @@ is_minor(const struct graph * g, const struct graph * h) {
   c.h = h;
   c.unassigned = bitset_below(bitset_single(g->n));
   simple_automorphisms(h, c.sa);
-  assign(&c, 0);
+  assign(&c);
   return 0;
 }
 
