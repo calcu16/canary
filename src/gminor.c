@@ -93,7 +93,6 @@ unwind(struct context * c, int gv) {
 static void
 dfs(struct context * c, int gv) {
   int i;
-  enum state old_state = c->state;
   if (bitset_get(c->path, gv) || (!bitset_isempty(c->path) && !bitset_isempty(bitset_and(c->g->m[gv], c->assigned[c->hs])))) {
     return;
   }
@@ -104,14 +103,12 @@ dfs(struct context * c, int gv) {
     c->state = END;
   }
   if (c->state == START && (!bitset_get(c->undecided, gv) ||  gv < c->initial_assignment[c->hs])) {
-    c->state = old_state;
     return;
   }
   if (c->state == UNASSIGNED && gv < c->initial_assignment[c->hs] && bitset_isall(c->start_path)) {
     c->start_path = c->path;
   }
   if (c->state == END && (!bitset_get(c->half_assigned[c->he], gv) || !bitset_get(c->undecided, gv))) {
-    c->state = old_state;
     return;
   }
 
@@ -130,7 +127,6 @@ dfs(struct context * c, int gv) {
   if (bitset_equal(c->start_path, c->path)) {
     c->start_path = bitset_all();
   }
-  c->state = old_state;
 }
 
 static void
@@ -168,7 +164,6 @@ static void
 path(struct context * c) {
   int i, old_he; 
   struct bitset old_path, old_start_path;
-  enum state old_state;
 
   old_he = c->he;
   for (;c->he < c->hs && !bitset_get(c->h->m[c->hs], c->he); ++c->he) ;
@@ -181,10 +176,8 @@ path(struct context * c) {
   }
   old_path = c->path;
   old_start_path = c->start_path;
-  old_state = c->state;
   c->path = bitset_empty();
   c->start_path = bitset_all();
-  c->state = START;
   for (i = c->initial_assignment[c->he]; i < c->g->n; ++i) {
     if (!bitset_isempty(bitset_and(c->g->m[i], c->assigned[c->hs])) && bitset_get(c->assigned[c->he], i)) {
       ++c->he;
@@ -192,19 +185,18 @@ path(struct context * c) {
       --c->he;
       c->path = old_path;
       c->start_path = old_start_path;
-      c->state = old_state;
       c->he = old_he;
       return;
     }
   }
   for (i = c->initial_assignment[c->he] + 1; i < c->g->n; ++i) {
     if (!bitset_isempty(bitset_and(c->g->m[i], c->assigned[c->hs]))) {
+      c->state = START;
       dfs(c, i);
     }
   }
   c->path = old_path;
   c->start_path = old_start_path;
-  c->state = old_state;
   c->he = old_he;
 }
 
