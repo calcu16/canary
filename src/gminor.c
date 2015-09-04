@@ -42,7 +42,7 @@ struct context {
 
   /* variables used in dfs */
   enum state state;
-  int hs, he;
+  int hs, he, gv, i;
 };
 
 static void
@@ -91,39 +91,41 @@ unwind(struct context * c, int gv) {
 }
 
 static void
-dfs(struct context * c, int gv) {
-  int i;
-  if (bitset_get(c->path, gv) || (!bitset_isempty(c->path) && !bitset_isempty(bitset_and(c->g->m[gv], c->assigned[c->hs])))) {
+dfs(struct context * c) {
+  int i, old_gv = c->gv;
+  if (bitset_get(c->path, c->gv) || (!bitset_isempty(c->path) && !bitset_isempty(bitset_and(c->g->m[c->gv], c->assigned[c->hs])))) {
     return;
   }
-  if (c->state == START && !bitset_get(c->half_assigned[c->hs], gv)) {
+  if (c->state == START && !bitset_get(c->half_assigned[c->hs], c->gv)) {
     c->state = UNASSIGNED;
   }
-  if (c->state == UNASSIGNED && !bitset_get(c->unassigned, gv)) {
+  if (c->state == UNASSIGNED && !bitset_get(c->unassigned, c->gv)) {
     c->state = END;
   }
-  if (c->state == START && (!bitset_get(c->undecided, gv) ||  gv < c->initial_assignment[c->hs])) {
+  if (c->state == START && (!bitset_get(c->undecided, c->gv) ||  c->gv < c->initial_assignment[c->hs])) {
     return;
   }
-  if (c->state == UNASSIGNED && gv < c->initial_assignment[c->hs] && bitset_isall(c->start_path)) {
+  if (c->state == UNASSIGNED && c->gv < c->initial_assignment[c->hs] && bitset_isall(c->start_path)) {
     c->start_path = c->path;
   }
-  if (c->state == END && (!bitset_get(c->half_assigned[c->he], gv) || !bitset_get(c->undecided, gv))) {
+  if (c->state == END && (!bitset_get(c->half_assigned[c->he], c->gv) || !bitset_get(c->undecided, c->gv))) {
     return;
   }
 
-  c->path = bitset_add(c->path, gv);
-  if (!bitset_isempty(bitset_and(c->g->m[gv], c->assigned[c->he]))) {
+  c->path = bitset_add(c->path, c->gv);
+  if (!bitset_isempty(bitset_and(c->g->m[c->gv], c->assigned[c->he]))) {
     assign_path(c);
   } else {
     for (i = c->initial_assignment[c->he]; i < c->g->n; ++i) {
-      if (bitset_equal(bitset_and(c->g->m[i], c->path), bitset_single(gv))) {
-        unwind(c, gv);
-        dfs(c, i);
+      if (bitset_equal(bitset_and(c->g->m[i], c->path), bitset_single(c->gv))) {
+        unwind(c, c->gv);
+        c->gv = i;
+        dfs(c);
+        c->gv = old_gv;
       }
     }
   }
-  c->path = bitset_remove(c->path, gv);
+  c->path = bitset_remove(c->path, c->gv);
   if (bitset_equal(c->start_path, c->path)) {
     c->start_path = bitset_all();
   }
@@ -162,7 +164,7 @@ assign(struct context * c) {
 
 static void
 path(struct context * c) {
-  int i, old_he; 
+  int i, old_he, old_gv; 
   struct bitset old_path, old_start_path;
 
   old_he = c->he;
@@ -189,12 +191,15 @@ path(struct context * c) {
       return;
     }
   }
+  old_gv = c->gv;
   for (i = c->initial_assignment[c->he] + 1; i < c->g->n; ++i) {
     if (!bitset_isempty(bitset_and(c->g->m[i], c->assigned[c->hs]))) {
       c->state = START;
-      dfs(c, i);
+      c->gv = i;
+      dfs(c);
     }
   }
+  c->gv = old_gv;
   c->path = old_path;
   c->start_path = old_start_path;
   c->he = old_he;
