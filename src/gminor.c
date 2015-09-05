@@ -18,10 +18,6 @@ struct context {
   /* a graph and its minor */
   const struct graph *g, *h;
 
-  /* current traversed path */
-  struct bitset path;
-  struct bitset start_path;
-  
   /* vertices that are unassigned */
   struct bitset unassigned;
   /* vertices that have two assignments */
@@ -43,11 +39,15 @@ struct context {
 
   /* variables used in dfs */
   enum state state;
-  int hs, he, gv, i;
+  int hs, he[MAX_VERTICES], gv[MAX_VERTICES][MAX_VERTICES], i;
+  struct bitset path[MAX_VERTICES][MAX_VERTICES];
+  struct bitset start_path[MAX_VERTICES][MAX_VERTICES];
 };
 
-static void
-path(struct context * c);
+#define he he[c->hs]
+#define path path[c->hs][c->he]
+#define start_path start_path[c->hs][c->he]
+#define gv gv[c->hs][c->he]
 
 static inline void
 commit_path(struct context * c) {
@@ -71,21 +71,71 @@ uncommit_path(struct context * c) {
   c->assigned[c->hs] = bitset_minus(c->assigned[c->hs], c->path);
 }
 
-static inline void
-unwind(struct context * c) {
-  c->i = c->gv;
-  c->gv = __builtin_ctzll(bitset_and(c->g->m[c->gv], c->path).v);
-  if (bitset_get(c->half_assigned[c->hs], c->gv)) {
-    c->state = START;
-  } else if(bitset_get(c->unassigned, c->gv)) {
-    c->state = UNASSIGNED;
-  } else {
-    c->state = END;
-  }
-}
-
 static void
-dfs(struct context * c) {
+assign(struct context * c) {
+
+assign_down:
+  ++c->hs;
+  if (c->hs == c->h->n) {
+    _longjmp(c->top, 1);
+  }
+  c->initial_assignment[c->hs] = 0;
+assign_next:
+  if (c->initial_assignment[c->hs] < c->initial_assignment[c->hsa[c->hs]]) {
+    if (bitset_get(c->unassigned, c->initial_assignment[c->hs])) {
+      c->unassigned = bitset_remove(c->unassigned, c->initial_assignment[c->hs]);
+      c->half_assigned[c->hs] = bitset_add(c->half_assigned[c->hs], c->initial_assignment[c->hs]);
+      c->assigned[c->hs] = bitset_add(c->assigned[c->hs], c->initial_assignment[c->hs]);
+      c->he = -1;
+      goto path_down;
+
+assign_up:
+      c->assigned[c->hs] = bitset_remove(c->assigned[c->hs], c->initial_assignment[c->hs]);
+      c->half_assigned[c->hs] = bitset_remove(c->half_assigned[c->hs], c->initial_assignment[c->hs]);
+      c->unassigned = bitset_add(c->unassigned, c->initial_assignment[c->hs]);
+    }
+    ++c->initial_assignment[c->hs];
+    goto assign_next;
+  }
+  --c->hs;
+  if (c->hs == -1) {
+    return;
+  }
+  goto path_up;
+
+path_commit:
+  commit_path(c);
+path_down:
+  for (;++c->he < c->hs && !bitset_get(c->h->m[c->hs], c->he); ) ;
+  if (c->hs == c->he) {
+    goto assign_down;
+  }
+  c->path = bitset_empty();
+  c->start_path = bitset_all();
+  for (c->gv = c->initial_assignment[c->he]; c->gv < c->g->n; ++c->gv) {
+    if (!bitset_isempty(bitset_and(c->g->m[c->gv], c->assigned[c->hs])) && bitset_get(c->assigned[c->he], c->gv)) {
+      goto path_down;
+    }
+  }
+  c->gv = c->initial_assignment[c->he];
+path_next:
+  ++c->gv;
+  if (c->gv < c->g->n) {
+    if (!bitset_isempty(bitset_and(c->g->m[c->gv], c->assigned[c->hs]))) {
+      c->state = START;
+      goto dfs_down;
+    }
+    goto path_next;
+  }
+path_up:
+  for ( ; c->he-- > 0 && !bitset_get(c->h->m[c->hs], c->he); ) ;
+  if (c->he == -1) {
+    goto assign_up;
+  } else {
+    uncommit_path(c);
+    goto dfs_unwind;
+  }
+
 dfs_down:
   if (bitset_get(c->path, c->gv) || (!bitset_isempty(c->path) && !bitset_isempty(bitset_and(c->g->m[c->gv], c->assigned[c->hs])))) {
     goto dfs_up;
@@ -108,95 +158,37 @@ dfs_down:
 
   c->path = bitset_add(c->path, c->gv);
   if (!bitset_isempty(bitset_and(c->g->m[c->gv], c->assigned[c->he]))) {
-    commit_path(c);
-    path(c);
-    uncommit_path(c);
-  } else {
-    c->i = c->initial_assignment[c->he] - 1;
-dfs_next:
-    ++c->i;
-    if (c->i < c->g->n) {
-      if (bitset_equal(bitset_and(c->g->m[c->i], c->path), bitset_single(c->gv))) {
-        c->gv = c->i;
-        goto dfs_down;
-      }
-      goto dfs_next;
-    }
+    goto path_commit;
   }
-
+  c->i = c->initial_assignment[c->he] - 1;
+dfs_next:
+  ++c->i;
+  if (c->i < c->g->n) {
+    if (bitset_equal(bitset_and(c->g->m[c->i], c->path), bitset_single(c->gv))) {
+      c->gv = c->i;
+      goto dfs_down;
+    }
+    goto dfs_next;
+  }
+dfs_unwind:
   c->path = bitset_remove(c->path, c->gv);
   if (bitset_equal(c->start_path, c->path)) {
     c->start_path = bitset_all();
   }
 dfs_up:
   if (bitset_isempty(c->path)) {
-    return;
+    goto path_up;
   }
-  unwind(c);
+  c->i = c->gv;
+  c->gv = __builtin_ctzll(bitset_and(c->g->m[c->gv], c->path).v);
+  if (bitset_get(c->half_assigned[c->hs], c->gv)) {
+    c->state = START;
+  } else if(bitset_get(c->unassigned, c->gv)) {
+    c->state = UNASSIGNED;
+  } else {
+    c->state = END;
+  }
   goto dfs_next;
-}
-
-static void
-assign(struct context * c) {
-  int old_he;
-
-  ++c->hs;
-  if (c->hs == c->h->n) {
-    _longjmp(c->top, 1);
-  }
-  old_he = c->he;
-  for (c->initial_assignment[c->hs] = 0; c->initial_assignment[c->hs] < c->initial_assignment[c->hsa[c->hs]]; ++c->initial_assignment[c->hs]) {
-    if (bitset_get(c->unassigned, c->initial_assignment[c->hs])) {
-      c->unassigned = bitset_remove(c->unassigned, c->initial_assignment[c->hs]);
-      c->half_assigned[c->hs] = bitset_add(c->half_assigned[c->hs], c->initial_assignment[c->hs]);
-      c->assigned[c->hs] = bitset_add(c->assigned[c->hs], c->initial_assignment[c->hs]);
-      c->initial_assignment[c->hs] = c->initial_assignment[c->hs];
-      c->he = -1;
-      path(c);
-
-      c->assigned[c->hs] = bitset_remove(c->assigned[c->hs], c->initial_assignment[c->hs]);
-      c->half_assigned[c->hs] = bitset_remove(c->half_assigned[c->hs], c->initial_assignment[c->hs]);
-      c->unassigned = bitset_add(c->unassigned, c->initial_assignment[c->hs]);
-    }
-  }
-  c->he = old_he;
-  --c->hs;
-}
-
-static void
-path(struct context * c) {
-  int old_gv; 
-  struct bitset old_path, old_start_path;
-
-  old_gv = c->gv;
-  old_path = c->path;
-  old_start_path = c->start_path;
-
-  for (;++c->he < c->hs && !bitset_get(c->h->m[c->hs], c->he); ) ;
-  if (c->hs == c->he) {
-    assign(c);
-    goto path_end;
-  }
-  c->path = bitset_empty();
-  c->start_path = bitset_all();
-  for (c->gv = c->initial_assignment[c->he]; c->gv < c->g->n; ++c->gv) {
-    if (!bitset_isempty(bitset_and(c->g->m[c->gv], c->assigned[c->hs]))
-        && bitset_get(c->assigned[c->he], c->gv)) {
-      path(c);
-      goto path_end;
-    }
-  }
-  for (c->gv = c->initial_assignment[c->he] + 1; c->gv < c->g->n; ++c->gv) {
-    if (!bitset_isempty(bitset_and(c->g->m[c->gv], c->assigned[c->hs]))) {
-      c->state = START;
-      dfs(c);
-    }
-  }
-path_end:
-  c->gv = old_gv;
-  c->path = old_path;
-  c->start_path = old_start_path;
-  for ( ; c->he-- > 0 && !bitset_get(c->h->m[c->hs], c->he); ) ;
 }
 
 static void
