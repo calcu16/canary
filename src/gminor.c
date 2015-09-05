@@ -58,6 +58,9 @@ is_minor(const struct graph * g, const struct graph * h) {
   decided = bitset_empty();
   memset(assigned, 0, sizeof(assigned));
   memset(half_assigned, 0, sizeof(half_assigned));
+  memset(he, -1, sizeof(he));
+  memset(path, 0, sizeof(path));
+  memset(start_path, -1, sizeof(start_path));
 
   simple_automorphisms(g, gsa);
   simple_automorphisms(h, hsa);
@@ -76,7 +79,6 @@ assign_next:
       unassigned = bitset_remove(unassigned, initial_assignment[hs]);
       half_assigned[hs] = bitset_add(half_assigned[hs], initial_assignment[hs]);
       assigned[hs] = bitset_add(assigned[hs], initial_assignment[hs]);
-      he[hs] = -1;
       goto path_down;
 
 assign_up:
@@ -107,8 +109,6 @@ path_down:
   if (hs == he[hs]) {
     goto assign_down;
   }
-  path[hs][he[hs]] = bitset_empty();
-  start_path[hs][he[hs]] = bitset_all();
   for (gv[hs][he[hs]] = initial_assignment[he[hs]]; gv[hs][he[hs]] < g->n; ++gv[hs][he[hs]]) {
     if (!bitset_isempty(bitset_and(g->m[gv[hs][he[hs]]], assigned[hs])) && bitset_get(assigned[he[hs]], gv[hs][he[hs]])) {
       goto path_down;
