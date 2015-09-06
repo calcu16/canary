@@ -71,12 +71,15 @@ is_minor(const struct graph * g, const struct graph * h) {
   hs = -1;
   initial_assignment[MAX_VERTICES] = g->n;
 
+/* assign a vertex in h to a vertex in g */
 assign_down:
   ++hs;
   if (hs == h->n) {
     return 1;
   }
   initial_assignment[hs] = 0;
+
+/* try another vertex in g */
 assign_next:
   if (initial_assignment[hs] < initial_assignment[hsa[hs]]) {
     if (bitset_get(unassigned, initial_assignment[hs])) {
@@ -84,7 +87,7 @@ assign_next:
       half_assigned[hs] = bitset_add(half_assigned[hs], initial_assignment[hs]);
       assigned[hs] = bitset_add(assigned[hs], initial_assignment[hs]);
       goto path_down;
-
+/* can't find a valid assignment */
 assign_up:
       assigned[hs] = bitset_remove(assigned[hs], initial_assignment[hs]);
       half_assigned[hs] = bitset_remove(half_assigned[hs], initial_assignment[hs]);
@@ -99,6 +102,7 @@ assign_up:
   }
   goto path_up;
 
+/* try to generate a path from two vertices in g that matches an edge in h */
 path_down:
   for (;++he[hs] < hs && !bitset_get(h->m[hs], he[hs]); ) ;
   if (hs == he[hs]) {
@@ -110,6 +114,7 @@ path_down:
     }
   }
   gv[idx(hs, he[hs])] = initial_assignment[he[hs]];
+/* try another starting point */
 path_next:
   ++gv[idx(hs, he[hs])];
   if (gv[idx(hs, he[hs])] < g->n) {
@@ -119,6 +124,7 @@ path_next:
     }
     goto path_next;
   }
+/* can't find a valid path */
 path_up:
   for ( ; he[hs]-- > 0 && !bitset_get(h->m[hs], he[hs]); ) ;
   if (he[hs] == -1) {
@@ -133,7 +139,7 @@ path_up:
     assigned[hs] = bitset_minus(assigned[hs], path[idx(hs, he[hs])]);
     goto dfs_unwind;
   }
-
+/* depth first search a path */
 dfs_down:
   if (bitset_get(path[idx(hs, he[hs])], gv[idx(hs, he[hs])])
       || (!bitset_isempty(path[idx(hs, he[hs])])
@@ -169,6 +175,7 @@ dfs_down:
     goto path_down;
   }
   i = initial_assignment[he[hs]] - 1;
+/* try a different vertex along the path */
 dfs_next:
   ++i;
   if (i < g->n) {
@@ -178,11 +185,13 @@ dfs_next:
     }
     goto dfs_next;
   }
+/* unwind the path/start_path variables */
 dfs_unwind:
   path[idx(hs, he[hs])] = bitset_remove(path[idx(hs, he[hs])], gv[idx(hs, he[hs])]);
   if (bitset_equal(start_path[idx(hs, he[hs])], path[idx(hs, he[hs])])) {
     start_path[idx(hs, he[hs])] = bitset_all();
   }
+/* can't find a valid path if depth first searching from this vertex */
 dfs_up:
   if (bitset_isempty(path[idx(hs, he[hs])])) {
     goto path_next;
