@@ -29,6 +29,11 @@ simple_automorphisms(const struct graph * g, int results[MAX_VERTICES]) {
   }
 }
 
+enum {
+  MAX_TRIANGLE = (MAX_VERTICES - 1) * (MAX_VERTICES - 2)
+};
+static inline int idx(int r, int c) { return (r - 1) * (r - 1) + c; }
+
 char
 is_minor(const struct graph * g, const struct graph * h) {
   /* vertices that are unassigned */
@@ -41,7 +46,6 @@ is_minor(const struct graph * g, const struct graph * h) {
   struct bitset half_assigned[MAX_VERTICES];
   /* assignments of vertices in g to a vertex in h (index) */
   struct bitset assigned[MAX_VERTICES];
-
   int initial_assignment[MAX_VERTICES + 1];
 
   int gsa[MAX_VERTICES];
@@ -49,9 +53,9 @@ is_minor(const struct graph * g, const struct graph * h) {
 
   /* variables used in dfs */
   enum state state;
-  int hs, he[MAX_VERTICES], gv[MAX_VERTICES][MAX_VERTICES], i;
-  struct bitset path[MAX_VERTICES][MAX_VERTICES];
-  struct bitset start_path[MAX_VERTICES][MAX_VERTICES];
+  int hs, he[MAX_VERTICES], gv[MAX_VERTICES * MAX_VERTICES], i;
+  struct bitset path[MAX_VERTICES * MAX_VERTICES];
+  struct bitset start_path[MAX_VERTICES * MAX_VERTICES];
 
   unassigned = bitset_below(bitset_single(g->n));
   undecided = bitset_empty();
@@ -95,30 +99,21 @@ assign_up:
   }
   goto path_up;
 
-path_commit:
-  assigned[hs] = bitset_or(assigned[hs], bitset_and(half_assigned[hs], path[hs][he[hs]]));
-  assigned[he[hs]] = bitset_or(bitset_or(assigned[he[hs]], bitset_and(half_assigned[he[hs]], path[hs][he[hs]])), bitset_minus(path[hs][he[hs]], start_path[hs][he[hs]]));
-  half_assigned[hs] = bitset_or(half_assigned[hs], bitset_and(unassigned, bitset_and(path[hs][he[hs]], start_path[hs][he[hs]])));
-  half_assigned[he[hs]] = bitset_or(half_assigned[he[hs]], bitset_and(unassigned, path[hs][he[hs]]));
-  decided = bitset_and(bitset_minus(path[hs][he[hs]], start_path[hs][he[hs]]), unassigned);
-  undecided = bitset_or(bitset_minus(undecided, path[hs][he[hs]]), bitset_and(unassigned, path[hs][he[hs]]));
-  unassigned = bitset_minus(unassigned, path[hs][he[hs]]);
-
 path_down:
   for (;++he[hs] < hs && !bitset_get(h->m[hs], he[hs]); ) ;
   if (hs == he[hs]) {
     goto assign_down;
   }
-  for (gv[hs][he[hs]] = initial_assignment[he[hs]]; gv[hs][he[hs]] < g->n; ++gv[hs][he[hs]]) {
-    if (!bitset_isempty(bitset_and(g->m[gv[hs][he[hs]]], assigned[hs])) && bitset_get(assigned[he[hs]], gv[hs][he[hs]])) {
+  for (gv[idx(hs, he[hs])] = initial_assignment[he[hs]]; gv[idx(hs, he[hs])] < g->n; ++gv[idx(hs, he[hs])]) {
+    if (!bitset_isempty(bitset_and(g->m[gv[idx(hs, he[hs])]], assigned[hs])) && bitset_get(assigned[he[hs]], gv[idx(hs, he[hs])])) {
       goto path_down;
     }
   }
-  gv[hs][he[hs]] = initial_assignment[he[hs]];
+  gv[idx(hs, he[hs])] = initial_assignment[he[hs]];
 path_next:
-  ++gv[hs][he[hs]];
-  if (gv[hs][he[hs]] < g->n) {
-    if (!bitset_isempty(bitset_and(g->m[gv[hs][he[hs]]], assigned[hs]))) {
+  ++gv[idx(hs, he[hs])];
+  if (gv[idx(hs, he[hs])] < g->n) {
+    if (!bitset_isempty(bitset_and(g->m[gv[idx(hs, he[hs])]], assigned[hs]))) {
       state = START;
       goto dfs_down;
     }
@@ -129,64 +124,74 @@ path_up:
   if (he[hs] == -1) {
     goto assign_up;
   } else {
-    unassigned = bitset_or(bitset_or(unassigned, bitset_and(undecided, path[hs][he[hs]])), bitset_and(path[hs][he[hs]], decided));
-    undecided = bitset_minus(bitset_or(undecided, path[hs][he[hs]]), unassigned);
-    decided = bitset_minus(decided, path[hs][he[hs]]);
+    unassigned = bitset_or(bitset_or(unassigned, bitset_and(undecided, path[idx(hs, he[hs])])), bitset_and(path[idx(hs, he[hs])], decided));
+    undecided = bitset_minus(bitset_or(undecided, path[idx(hs, he[hs])]), unassigned);
+    decided = bitset_minus(decided, path[idx(hs, he[hs])]);
     half_assigned[he[hs]] = bitset_minus(half_assigned[he[hs]], unassigned);
     half_assigned[hs] = bitset_minus(half_assigned[hs], unassigned);
-    assigned[he[hs]] = bitset_minus(assigned[he[hs]], path[hs][he[hs]]);
-    assigned[hs] = bitset_minus(assigned[hs], path[hs][he[hs]]);
+    assigned[he[hs]] = bitset_minus(assigned[he[hs]], path[idx(hs, he[hs])]);
+    assigned[hs] = bitset_minus(assigned[hs], path[idx(hs, he[hs])]);
     goto dfs_unwind;
   }
 
 dfs_down:
-  if (bitset_get(path[hs][he[hs]], gv[hs][he[hs]]) || (!bitset_isempty(path[hs][he[hs]]) && !bitset_isempty(bitset_and(g->m[gv[hs][he[hs]]], assigned[hs])))) {
+  if (bitset_get(path[idx(hs, he[hs])], gv[idx(hs, he[hs])])
+      || (!bitset_isempty(path[idx(hs, he[hs])])
+        && !bitset_isempty(bitset_and(g->m[gv[idx(hs, he[hs])]], assigned[hs])))) {
     goto dfs_up;
   }
-  if (state == START && !bitset_get(half_assigned[hs], gv[hs][he[hs]])) {
+  if (state == START && !bitset_get(half_assigned[hs], gv[idx(hs, he[hs])])) {
     state = UNASSIGNED;
   }
-  if (state == UNASSIGNED && !bitset_get(unassigned, gv[hs][he[hs]])) {
+  if (state == UNASSIGNED && !bitset_get(unassigned, gv[idx(hs, he[hs])])) {
     state = END;
   }
-  if (state == START && (!bitset_get(undecided, gv[hs][he[hs]]) ||  gv[hs][he[hs]] < initial_assignment[hs])) {
+  if (state == START && (!bitset_get(undecided, gv[idx(hs, he[hs])]) ||  gv[idx(hs, he[hs])] < initial_assignment[hs])) {
     goto dfs_up;
   }
-  if (state == END && (!bitset_get(half_assigned[he[hs]], gv[hs][he[hs]]) || !bitset_get(undecided, gv[hs][he[hs]]))) {
+  if (state == END && (!bitset_get(half_assigned[he[hs]], gv[idx(hs, he[hs])]) || !bitset_get(undecided, gv[idx(hs, he[hs])]))) {
     goto dfs_up;
   }
-  if (state == UNASSIGNED && gv[hs][he[hs]] < initial_assignment[hs] && bitset_isall(start_path[hs][he[hs]])) {
-    start_path[hs][he[hs]] = path[hs][he[hs]];
+  if (state == UNASSIGNED && gv[idx(hs, he[hs])] < initial_assignment[hs] && bitset_isall(start_path[idx(hs, he[hs])])) {
+    start_path[idx(hs, he[hs])] = path[idx(hs, he[hs])];
   }
 
-  path[hs][he[hs]] = bitset_add(path[hs][he[hs]], gv[hs][he[hs]]);
-  if (!bitset_isempty(bitset_and(g->m[gv[hs][he[hs]]], assigned[he[hs]]))) {
-    goto path_commit;
+  path[idx(hs, he[hs])] = bitset_add(path[idx(hs, he[hs])], gv[idx(hs, he[hs])]);
+  if (!bitset_isempty(bitset_and(g->m[gv[idx(hs, he[hs])]], assigned[he[hs]]))) {
+    assigned[hs] = bitset_or(assigned[hs], bitset_and(half_assigned[hs], path[idx(hs, he[hs])]));
+    assigned[he[hs]] = bitset_or(bitset_or(assigned[he[hs]], bitset_and(half_assigned[he[hs]], path[idx(hs, he[hs])])), bitset_minus(path[idx(hs, he[hs])], start_path[idx(hs, he[hs])]));
+    half_assigned[hs] = bitset_or(half_assigned[hs], bitset_and(unassigned, bitset_and(path[idx(hs, he[hs])], start_path[idx(hs, he[hs])])));
+    half_assigned[he[hs]] = bitset_or(half_assigned[he[hs]], bitset_and(unassigned, path[idx(hs, he[hs])]));
+    decided = bitset_and(bitset_minus(path[idx(hs, he[hs])], start_path[idx(hs, he[hs])]), unassigned);
+    undecided = bitset_or(bitset_minus(undecided, path[idx(hs, he[hs])]), bitset_and(unassigned, path[idx(hs, he[hs])]));
+    unassigned = bitset_minus(unassigned, path[idx(hs, he[hs])]);
+
+    goto path_down;
   }
   i = initial_assignment[he[hs]] - 1;
 dfs_next:
   ++i;
   if (i < g->n) {
-    if (bitset_equal(bitset_and(g->m[i], path[hs][he[hs]]), bitset_single(gv[hs][he[hs]]))) {
-      gv[hs][he[hs]] = i;
+    if (bitset_equal(bitset_and(g->m[i], path[idx(hs, he[hs])]), bitset_single(gv[idx(hs, he[hs])]))) {
+      gv[idx(hs, he[hs])] = i;
       goto dfs_down;
     }
     goto dfs_next;
   }
 dfs_unwind:
-  path[hs][he[hs]] = bitset_remove(path[hs][he[hs]], gv[hs][he[hs]]);
-  if (bitset_equal(start_path[hs][he[hs]], path[hs][he[hs]])) {
-    start_path[hs][he[hs]] = bitset_all();
+  path[idx(hs, he[hs])] = bitset_remove(path[idx(hs, he[hs])], gv[idx(hs, he[hs])]);
+  if (bitset_equal(start_path[idx(hs, he[hs])], path[idx(hs, he[hs])])) {
+    start_path[idx(hs, he[hs])] = bitset_all();
   }
 dfs_up:
-  if (bitset_isempty(path[hs][he[hs]])) {
+  if (bitset_isempty(path[idx(hs, he[hs])])) {
     goto path_next;
   }
-  i = gv[hs][he[hs]];
-  gv[hs][he[hs]] = __builtin_ctzll(bitset_and(g->m[gv[hs][he[hs]]], path[hs][he[hs]]).v);
-  if (bitset_get(half_assigned[hs], gv[hs][he[hs]])) {
+  i = gv[idx(hs, he[hs])];
+  gv[idx(hs, he[hs])] = __builtin_ctzll(bitset_and(g->m[gv[idx(hs, he[hs])]], path[idx(hs, he[hs])]).v);
+  if (bitset_get(half_assigned[hs], gv[idx(hs, he[hs])])) {
     state = START;
-  } else if(bitset_get(unassigned, gv[hs][he[hs]])) {
+  } else if(bitset_get(unassigned, gv[idx(hs, he[hs])])) {
     state = UNASSIGNED;
   } else {
     state = END;

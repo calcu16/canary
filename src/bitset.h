@@ -1,10 +1,11 @@
 #ifndef _BITSET_H_
 #define _BITSET_H_
 #include <stdint.h>
+typedef uint64_t bitset_value_t;
 
 /* currently assumes a 64 bit maximum graph size */
 struct bitset {
-  uint64_t v;
+  bitset_value_t v;
 };
 
 inline static struct bitset
@@ -23,7 +24,7 @@ bitset_below(struct bitset v) {
 }
 
 inline static struct bitset
-bitset_single_value(int i, uint64_t v) {
+bitset_single_value(int i, bitset_value_t v) {
   return (struct bitset) { !!v << i };
 }
 
