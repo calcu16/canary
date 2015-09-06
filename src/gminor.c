@@ -99,7 +99,7 @@ dfs(struct context * c, enum state state, int hs, int he, int gv, char first) {
   if (!bitset_isempty(bitset_and(c->g->m[gv], c->assigned[he]))) {
     assign_path(c, hs, he);
   } else {
-    for (i = c->initial_assignment[he] + 1; i < c->g->n; ++i) {
+    for (i = c->initial_assignment[he]; i < c->g->n; ++i) {
       if (bitset_equal(bitset_and(c->g->m[i], c->path), bitset_single(gv))) {
         dfs(c, state, hs, he, i, 0);
       }

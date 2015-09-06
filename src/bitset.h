@@ -86,4 +86,9 @@ inline static char
 bitset_get(struct bitset s, int i) {
   return !bitset_isempty(bitset_and(s, bitset_single(i)));
 }
+
+inline static int
+bitset_size(struct bitset s) {
+  return __builtin_popcountll(s.v);
+}
 #endif/*_BITSET_H_*/

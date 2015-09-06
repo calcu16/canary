@@ -21,13 +21,22 @@ enum option {
   ALL
 };
 
+enum sort {
+  NOSORT,
+  FORWARD,
+  REVERSE
+};
 
-static void test_one(const struct graph * g, const char *hs[], int hl, enum option o) {
+
+static void test_one(const struct graph * g, const char *hs[], int hl, enum option o, enum sort hsort) {
   struct graph h;
   int i;
   int r;
   for (i = 0; i < hl; ++i) {
     atog(hs[i], &h);
+    if (hsort != NOSORT) {
+      graph_sort(&h, hsort == FORWARD);
+    }
     r = is_minor(g, &h);
     if (r && o == ANY) {
       printf("1\n");
@@ -49,12 +58,15 @@ static void test_one(const struct graph * g, const char *hs[], int hl, enum opti
   }
 }
 
-static void test_all(const char *gs[], int gl, const char *hs[], int hl, enum option o) {
+static void test_all(const char *gs[], int gl, const char *hs[], int hl, enum option o, enum sort gsort, enum sort hsort) {
   struct graph g;
   int i;
   for (i = 0; i < gl; ++i) {
     atog(gs[i], &g);
-    test_one(&g, hs, hl, o);
+    if (gsort != NOSORT) {
+      graph_sort(&g, gsort == FORWARD);
+    }
+    test_one(&g, hs, hl, o, hsort);
   }
 }
 
@@ -63,6 +75,7 @@ main(int argc, const char *argv[]) {
   char t = 0;
   int gs, gl, hs = 1, hl;
   enum option o = NONE;
+  enum sort gsort = NOSORT, hsort = NOSORT;
   uint64_t start, end, delta;
 
   if (argc == 1) {
@@ -100,6 +113,24 @@ main(int argc, const char *argv[]) {
     ++hs;
   }
 
+  if (!strcmp(argv[hs], "--gsort") || !strcmp(argv[hs], "--grsort")) {
+    if (!strcmp(argv[hs], "--gsort")) {
+      gsort = FORWARD;
+    } else {
+      gsort = REVERSE;
+    }
+    ++hs;
+  }
+
+  if (!strcmp(argv[hs], "--hsort") || !strcmp(argv[hs], "--hrsort")) {
+    if (!strcmp(argv[hs], "--hsort")) {
+      hsort = FORWARD;
+    } else {
+      hsort = REVERSE;
+    }
+    ++hs;
+  }
+
   for (hl = 0; hs + hl < argc && strcmp(argv[hs + hl], "--"); ++hl) ;
   if (hs + hl == argc) {
     fprintf(stderr, usage, argv[0]);
@@ -109,7 +140,7 @@ main(int argc, const char *argv[]) {
   gl = argc - gs;
 
   start = microseconds();
-  test_all(&argv[gs], gl, &argv[hs], hl, o);
+  test_all(&argv[gs], gl, &argv[hs], hl, o, gsort, hsort);
   end = microseconds();
   delta = end - start;
   if (t) {

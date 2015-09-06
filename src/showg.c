@@ -6,12 +6,19 @@
 #include "g6.h"
 #include "graph.h"
 
+enum sort {
+  NOSORT,
+  FORWARD,
+  REVERSE
+};
+
 int
 main(int argc, char *argv[]) {
   char t = 0;
   int i = 0, j = 1;
   struct graph g;
   uint64_t start, end, delta;
+  enum sort s = NOSORT;
 
   if (argc == 1) {
     fprintf(stderr, "%s GRAPH MINOR\n", argv[0]);
@@ -22,10 +29,27 @@ main(int argc, char *argv[]) {
     t = 1;
     ++j;
   }
+
+  if (!strncmp(argv[j], "--time", strlen("--time"))) {
+    t = 1;
+    ++j;
+  }
+
+  if (!strcmp(argv[j], "--sort") || !strcmp(argv[j], "--rsort")) {
+    if (!strcmp(argv[j], "--sort")) {
+      s = FORWARD;
+    } else {
+      s = REVERSE;
+    }
+    ++j;
+  }
   
   start = microseconds();
   for (i = 1; j < argc; ++j, ++i) {
     atog(argv[j], &g);
+    if (s != NOSORT) {
+      graph_sort(&g, s == FORWARD);
+    }
     printf("\nGraph %d, order %d.\n", i, g.n);
     print_adjacency_list(&g);
   }
