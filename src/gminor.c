@@ -177,7 +177,7 @@ dfs_unwind:
   }
 dfs_up:
   if (bitset_isempty(c->path)) {
-    goto path_up;
+    goto path_next;
   }
   c->i = c->gv;
   c->gv = __builtin_ctzll(bitset_and(c->g->m[c->gv], c->path).v);
