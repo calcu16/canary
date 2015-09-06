@@ -7,6 +7,7 @@ canary F]rE? -- L]ooOGA?]TEi?~
   0m0.013s + switching to internal time
   0m0.007s + finishing optimization 3.1
   0m0.006s + for loops starting at he's initial value
+  0m0.002s + sorting by connectedness
 make build/tst/canary/K25.out
   2m34.659s - basic algorithm + optimization 3.{2,3}
   0m9.317s + most of optimization 3.1
