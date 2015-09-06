@@ -178,7 +178,7 @@ log_context(struct context * c, enum debug level) {
   LOGF(level, "unassigned : %llx\n", c->unassigned.v);
   LOGF(level, "undecided : %llx\n", c->undecided.v);
   for (i = 0; i < c->h->n; ++i) {
-    LOGF(level, "half assigned to %d: %llx\n", i, c->assigned[i].v);
+    LOGF(level, "half assigned to %d: %llx\n", i, c->half_assigned[i].v);
   }
   for (i = 0; i < c->h->n; ++i) {
     LOGF(level, "assigned to %d: %llx\n", i, c->assigned[i].v);
