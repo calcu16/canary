@@ -30,6 +30,7 @@ struct context {
   int initial_assignment[MAX_VERTICES];
 
   int sa[MAX_VERTICES];
+  int sac[MAX_VERTICES];
 
   /* used to longjmp back to the beginning */
   jmp_buf top;
@@ -120,7 +121,7 @@ assign(struct context * c, int hv) {
   if (hv == c->h->n) {
     _longjmp(c->top, 1);
   }
-  for (i = 0; i < l; ++i) {
+  for (i = c->sac[hv]; i < l; ++i) {
     if (bitset_get(c->unassigned, i)) {
       c->unassigned = bitset_remove(c->unassigned, i);
       c->half_assigned[hv] = bitset_add(c->half_assigned[hv], i);
@@ -186,7 +187,7 @@ log_context(struct context * c, enum debug level) {
 }
 
 static void
-simple_automorphisms(const struct graph * g, int results[MAX_VERTICES]) {
+simple_automorphisms(const struct graph * g, int results[MAX_VERTICES], int count[MAX_VERTICES]) {
   int i, j;
   for (i = 0; i < g->n; ++i) {
     results[i] = -1;
@@ -196,6 +197,13 @@ simple_automorphisms(const struct graph * g, int results[MAX_VERTICES]) {
         results[i] = j;
         break;
       }
+    }
+  }
+
+  memset(count, 0, MAX_VERTICES * sizeof(int));
+  for (i = g->n; i-- > 0; ) {
+    if (results[i] != -1) {
+      count[results[i]] = count[i] + 1;
     }
   }
 }
@@ -212,7 +220,7 @@ is_minor(const struct graph * g, const struct graph * h) {
   c.g = g;
   c.h = h;
   c.unassigned = bitset_below(bitset_single(g->n));
-  simple_automorphisms(h, c.sa);
+  simple_automorphisms(h, c.sa, c.sac);
   assign(&c, 0);
   return 0;
 }
