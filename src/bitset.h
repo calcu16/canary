@@ -24,7 +24,7 @@ bitset_below(struct bitset v) {
 
 inline static struct bitset
 bitset_single_value(int i, uint64_t v) {
-  return (struct bitset) { !!v << i };
+  return (struct bitset) { v << i };
 }
 
 inline static struct bitset
@@ -74,7 +74,7 @@ bitset_add(struct bitset s, int i) {
 
 inline static struct bitset
 bitset_add_value(struct bitset s, int i, char v) {
-  return bitset_or(s, bitset_single_value(i, v));
+  return bitset_or(s, bitset_single_value(i, !!v));
 }
 
 inline static struct bitset
