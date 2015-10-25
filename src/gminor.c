@@ -100,7 +100,7 @@ dfs(struct context * c, enum state state, int hs, int he, int gv, char first) {
   if (!bitset_isempty(bitset_and(c->g->m[gv], c->assigned[he]))) {
     assign_path(c, hs, he);
   } else {
-    for (i = c->initial_assignment[he]; i < c->g->n; ++i) {
+    for (i = c->initial_assignment[he]; TRACE(i) && i < c->g->n; ++i) {
       if (bitset_equal(bitset_and(c->g->m[i], c->path), bitset_single(gv))) {
         dfs(c, state, hs, he, i, 0);
       }
@@ -121,7 +121,7 @@ assign(struct context * c, int hv) {
   if (hv == c->h->n) {
     _longjmp(c->top, 1);
   }
-  for (i = c->sac[hv]; i < l; ++i) {
+  for (i = c->sac[hv]; TRACE(i) && i < l; ++i) {
     if (bitset_get(c->unassigned, i)) {
       c->unassigned = bitset_remove(c->unassigned, i);
       c->half_assigned[hv] = bitset_add(c->half_assigned[hv], i);
@@ -146,7 +146,7 @@ path(struct context * c, int hs, int he) {
   int i; 
   struct bitset old_path, old_start_path;
 
-  for (;he < hs && !bitset_get(c->h->m[hs], he); ++he) ;
+  for (;TRACE(he) && he < hs && !bitset_get(c->h->m[hs], he); ++he) ;
   if (hs == he) {
     assign(c, hs + 1);
     return;
@@ -155,7 +155,7 @@ path(struct context * c, int hs, int he) {
   old_start_path = c->start_path;
   c->path = bitset_empty();
   c->start_path = bitset_all();
-  for (i = c->initial_assignment[he]; i < c->g->n; ++i) {
+  for (i = c->initial_assignment[he]; TRACE(i) && i < c->g->n; ++i) {
     if (!bitset_isempty(bitset_and(c->g->m[i], c->assigned[hs])) && bitset_get(c->assigned[he], i)) {
       path(c, hs, he + 1);
       c->path = old_path;
@@ -163,7 +163,7 @@ path(struct context * c, int hs, int he) {
       return;
     }
   }
-  for (i = c->initial_assignment[he] + 1; i < c->g->n; ++i) {
+  for (i = c->initial_assignment[he] + 1; TRACE(i) && i < c->g->n; ++i) {
     if (!bitset_isempty(bitset_and(c->g->m[i], c->assigned[hs]))) {
       dfs(c, START, hs, he, i, 1);
     }
