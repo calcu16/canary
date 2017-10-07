@@ -18,6 +18,7 @@ make build/tst/canary/K25.out
   0m0.422s + for loops starting at he's initial value
   0m0.068s + sorting by connectedness
   0m0.048s + starting automorphisms later
+  0m0.160s + fixed a bug
 make build/tst/canary/planar.out
   0m0.517s - basic algorithm + optimization 3.{most of 1,2,3}  + simple automorphisms
   0m0.424s + switching to internal time
@@ -25,6 +26,7 @@ make build/tst/canary/planar.out
   0m0.259s + for loops starting at he's initial value
   0m0.019s + sorting by connectedness
   0m0.011s + starting automorhpisms later
+  0m0.122s + fixed a bug
 make build/tst/canary/nearlyPlanar.out
   0m36.049s - basic algorithm + optimization 3.{most of 1,2,3}  + simple automorphisms + checking for existing trivial path
   0m36.831s + switching to internal time
@@ -32,3 +34,4 @@ make build/tst/canary/nearlyPlanar.out
   0m31.946s + for loops starting at he's initial value
   0m0.054s + sorting by connectedness
   0m0.027s + starting automorphisms later
+  0m0.084s + fixed a bug

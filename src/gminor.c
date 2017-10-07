@@ -133,9 +133,13 @@ dfs(struct context * c, enum state state, int hs, int he, int gv, char first) {
   if (!bitset_isempty(bitset_and(c->g->m[gv], c->assigned[he]))) {
     assign_path(c, hs, he);
   } else {
-    for (i = (state == END ? c->initial_assignment[he] : c->initial_assignment[hs]) + 1; TRACE(i) && i < c->g->n; ++i) {
-      if (bitset_equal(bitset_and(c->g->m[i], c->path), bitset_single(gv))) {
-        dfs(c, state, hs, he, i, 0);
+    for (i = c->initial_assignment[he] + 1; TRACE(i) && i < c->g->n; ++i) {
+    }
+    if (state != END) {
+      for (i = c->initial_assignment[hs] + 1; TRACE(i) && i < c->initial_assignment[he] + 1; ++i) {
+        if (bitset_equal(bitset_and(c->g->m[i], c->path), bitset_single(gv))) {
+          dfs(c, state, hs, he, i, 0);
+        }
       }
     }
   }
@@ -210,7 +214,12 @@ path(struct context * c, int hs, int he) {
     he ^= hs;
     hs ^= he;
   }
-  for (i = c->initial_assignment[hs] + 1; TRACE(i) && i < c->g->n; ++i) {
+  for (i = c->initial_assignment[he] + 1; TRACE(i) && i < c->g->n; ++i) {
+    if (!bitset_isempty(bitset_and(c->g->m[i], c->assigned[hs]))) {
+      dfs(c, START, hs, he, i, 1);
+    }
+  }
+  for (i = c->initial_assignment[hs] + 1; TRACE(i) && i < c->initial_assignment[he] + 1; ++i) {
     if (!bitset_isempty(bitset_and(c->g->m[i], c->assigned[hs]))) {
       dfs(c, START, hs, he, i, 1);
     }
