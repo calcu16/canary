@@ -8,11 +8,16 @@ struct graph {
   int n;
   /* adjacency matrix */
   struct bitset m[MAX_VERTICES];
+  /* adjacency list */
+  int l[MAX_VERTICES][MAX_VERTICES];
+  int ll[MAX_VERTICES];
 };
 
 inline static void
 graph_add_edge(struct graph * g, int i, int j, char v) {
   g->m[i] = bitset_add_value(g->m[i], j, !!v);
+  g->l[i][g->ll[i]] = j;
+  g->ll[i] += !!v;
 }
 
 inline static char

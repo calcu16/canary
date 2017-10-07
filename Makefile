@@ -179,7 +179,7 @@ $(FAILS): $$(DIFF)
 
 $(DIFFS): $$(OUT) $$(GOLD_OUT)
 	@mkdir -p $(@D)
-	sed '$$ d' $(OUT) | bin/diff.py - $(GOLD_OUT) >$@
+	sed '$$ d' $(OUT) | python bin/diff.py - $(GOLD_OUT) >$@
 
 $(TIMES): $$(OUT)
 	@mkdir -p $(@D)
@@ -187,7 +187,7 @@ $(TIMES): $$(OUT)
 
 $(OUTS): $$(BIN) $$(ARGV)
 	@mkdir -p $(@D)
-	cat $(ARGV) | bin/lxargs.py $(BIN) --time >$@
+	cat $(ARGV) | python bin/lxargs.py $(BIN) --time >$@
 
 # Building tex files
 docs: $(PDFS)

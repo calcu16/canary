@@ -87,6 +87,11 @@ bitset_get(struct bitset s, int i) {
   return !bitset_isempty(bitset_and(s, bitset_single(i)));
 }
 
+inline static char
+bitset_isbelow(struct bitset v, int i) {
+  return bitset_single(i).v <= v.v;
+}
+
 inline static int
 bitset_size(struct bitset s) {
   return __builtin_popcountll(s.v);

@@ -26,6 +26,8 @@ struct context {
   struct bitset half_assigned[MAX_VERTICES];
   /* assignments of vertices in g to a vertex in h (index) */
   struct bitset assigned[MAX_VERTICES];
+  /* vertices in g reachable from an assignment in h */
+  struct bitset reachable[MAX_VERTICES];
 
   int initial_assignment[MAX_VERTICES];
 
@@ -45,6 +47,33 @@ enum state {
 static void
 path(struct context * c, int hs, int he);
 
+static inline void
+reachable(struct context * c, int hv, int gv) {
+  int done;
+  do {
+    done = 1;
+    for (int i = 0; i < c->g->n; ++i) {
+      if (!bitset_get(c->reachable[hv], i) && !bitset_isempty(bitset_and(c->g->m[i], bitset_and(c->reachable[hv], c->unassigned)))) {
+        done &= bitset_get(c->unassigned, i);
+        c->reachable[hv] = bitset_add(c->reachable[hv], i);
+      }
+    }
+  } while(!done);
+}
+
+static int
+paths_exist(struct context * c, int hv, int gv) {
+  c->reachable[hv] = bitset_single(gv);
+
+  reachable(c, hv, gv);
+  for (int he = 0; he < hv; ++he) {
+    if (bitset_get(c->h->m[hv], he) && bitset_isempty(bitset_and(c->half_assigned[he], c->reachable[hv]))) {
+      return 0;
+    }
+  }
+  return 1;
+}
+
 static void
 assign_path(struct context * c, int hs, int he) {
 #ifndef NDEBUG
@@ -58,7 +87,11 @@ assign_path(struct context * c, int hs, int he) {
   c->undecided = bitset_or(bitset_minus(c->undecided, c->path), bitset_and(c->unassigned, c->path));
   c->unassigned = bitset_minus(c->unassigned, c->path);
 
-  path(c, hs, he + 1);
+  if (hs < he) {
+    path(c, he, hs + 1);
+  } else {
+    path(c, hs, he + 1);
+  }
 
   c->unassigned = bitset_or(bitset_or(c->unassigned, bitset_and(c->undecided, c->path)), bitset_and(c->path, c->decided));
   c->undecided = bitset_minus(bitset_or(c->undecided, c->path), c->unassigned);
@@ -100,7 +133,7 @@ dfs(struct context * c, enum state state, int hs, int he, int gv, char first) {
   if (!bitset_isempty(bitset_and(c->g->m[gv], c->assigned[he]))) {
     assign_path(c, hs, he);
   } else {
-    for (i = c->initial_assignment[he]; TRACE(i) && i < c->g->n; ++i) {
+    for (i = (state == END ? c->initial_assignment[he] : c->initial_assignment[hs]) + 1; TRACE(i) && i < c->g->n; ++i) {
       if (bitset_equal(bitset_and(c->g->m[i], c->path), bitset_single(gv))) {
         dfs(c, state, hs, he, i, 0);
       }
@@ -121,22 +154,30 @@ assign(struct context * c, int hv) {
   if (hv == c->h->n) {
     _longjmp(c->top, 1);
   }
+  c->reachable[hv] = bitset_empty();
   for (i = c->sac[hv]; TRACE(i) && i < l; ++i) {
     if (bitset_get(c->unassigned, i)) {
-      c->unassigned = bitset_remove(c->unassigned, i);
-      c->half_assigned[hv] = bitset_add(c->half_assigned[hv], i);
-      c->assigned[hv] = bitset_add(c->assigned[hv], i);
-      c->initial_assignment[hv] = i;
+      if (bitset_get(c->reachable[hv], i) || paths_exist(c, hv, i)) {
+        c->unassigned = bitset_remove(c->unassigned, i);
+        c->half_assigned[hv] = bitset_add(c->half_assigned[hv], i);
+        c->assigned[hv] = bitset_add(c->assigned[hv], i);
+        c->initial_assignment[hv] = i;
       
-      path(c, hv, 0);
+        path(c, hv, 0);
 
-      c->assigned[hv] = bitset_remove(c->assigned[hv], i);
-      c->half_assigned[hv] = bitset_remove(c->half_assigned[hv], i);
-      c->unassigned = bitset_add(c->unassigned, i);
+        c->assigned[hv] = bitset_remove(c->assigned[hv], i);
+        c->half_assigned[hv] = bitset_remove(c->half_assigned[hv], i);
+        c->unassigned = bitset_add(c->unassigned, i);
 #ifndef NDEBUG
-      assert(bitset_equal(aunassigned, c->unassigned));
-      assert(bitset_equal(aundecided, c->undecided));
+        assert(bitset_equal(aunassigned, c->unassigned));
+        assert(bitset_equal(aundecided, c->undecided));
 #endif/*NDEBUG*/
+      }
+
+      if (i == 0 && hv + 1 == c->h->n) {
+        /* if we are on the last vertex and g0 is open, then we must be able to assign to g0 */
+        return;
+      }
     }
   }
 }
@@ -163,7 +204,13 @@ path(struct context * c, int hs, int he) {
       return;
     }
   }
-  for (i = c->initial_assignment[he] + 1; TRACE(i) && i < c->g->n; ++i) {
+  /* Always find a path from the smaller initial value to the larger intial value */
+  if (c->initial_assignment[hs] > c->initial_assignment[he]) {
+    hs ^= he;
+    he ^= hs;
+    hs ^= he;
+  }
+  for (i = c->initial_assignment[hs] + 1; TRACE(i) && i < c->g->n; ++i) {
     if (!bitset_isempty(bitset_and(c->g->m[i], c->assigned[hs]))) {
       dfs(c, START, hs, he, i, 1);
     }
